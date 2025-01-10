@@ -1,4 +1,7 @@
 ﻿@page "/Account/Register"
+@inject IAntiforgery Antiforgery
+
+@using Microsoft.AspNetCore.Antiforgery;
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -17,48 +20,88 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<div class="container d-flex justify-content-center align-items-center vh-100" style="background-image: url('/images/bg.jpg'); max-width: 1910px; background-position: center;">
+    <div class="row bg-black shadow rounded p-4" style="width:25%">
+        <div class="col-md-4">
+            <section>
+                <StatusMessage Message="@Message" />
+                <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register" style="width:350%">
+                    <DataAnnotationsValidator />
+                    <div href="/" class="brand" style="text-decoration: none; margin-left: 35%;margin-bottom: 10%;">
+                        <span style="color:white; font-size:1.5rem;">Movie</span>
+                        <span style="color:#0dcaf0; font-size:1rem;">Mania</span>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                        <label for="email">Email</label>
+                        <ValidationMessage For="() => Input.Email" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+                        <label for="password">Password</label>
+                        <ValidationMessage For="() => Input.Password" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+                        <label for="confirm-password">Confirm Password</label>
+                        <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText type="text" @bind-Value="Input.PhoneNumber" class="form-control" autocomplete="phoneNumber" aria-required="true" placeholder="Phone Number" />
+                        <label for="phoneNumber">Phone Number</label>
+                        <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.FirstName" class="form-control" autocomplete="firstName" aria-required="true" placeholder="First Name" />
+                        <label for="firstName">First Name</label>
+                        <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.LastName" class="form-control" autocomplete="lastName" aria-required="true" placeholder="Last Name" />
+                        <label for="lastName">Last Name</label>
+                        <ValidationMessage For="() => Input.LastName" class="text-danger" />
+                    </div>
 
-<div class="row">
-    <div class="col-md-4">
-        <StatusMessage Message="@Message" />
-        <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
-            <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label for="email">Email</label>
-                <ValidationMessage For="() => Input.Email" class="text-danger" />
-            </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="password">Password</label>
-                <ValidationMessage For="() => Input.Password" class="text-danger" />
-            </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="confirm-password">Confirm Password</label>
-                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </EditForm>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to register.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
+                    <div class="form-floating mb-3">
+                        <InputSelect @bind-Value="Input.Role" class="form-control" autocomplete="role" aria-required="true" placeholder="Role">
+                            <option value="" disabled selected>Role</option>
+                            <option value="1">Admin</option>
+                            <option value="2">User</option>
+                        </InputSelect>
+                        <label for="role" class="form-label">Role</label>
+                        <ValidationMessage For="() => Input.Role" class="text-danger" />
+                    </div>
+                    <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+
+                    <button type="submit" class="w-100 btn btn-lg btn-primary" style="margin-bottom:4%;">Sign Up</button>
+                    <br />
+                    <p>
+                        <a style="margin-left: 41%;" href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Sign In</a>
+                    </p>
+                </EditForm>
+
+                @*  <div class="col-md-6 col-md-offset-2">
+            <section>
+                <h3>Use another service to register.</h3>
+                <hr />
+                <ExternalLoginPicker />
+            </section>
+        </div> *@
+            </section>
+        </div>
     </div>
 </div>
 
 @code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
     private IEnumerable<IdentityError>? identityErrors;
 
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
+
+    private string SelectedRoleName => Input.Role == 1 ? "Admin" : "User"; // Maps Role value to Name
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
@@ -68,6 +111,13 @@
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
+
+        user.PhoneNumber = Input.PhoneNumber;
+        user.FirstName = Input.FirstName;
+        user.LastName = Input.LastName;
+        user.Role = Input.Role;
+        user.IsActive = true;
+        user.CreatedDateTime = DateTime.Now;
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
@@ -124,6 +174,8 @@
         return (IUserEmailStore<ApplicationUser>)UserStore;
     }
 
+
+
     private sealed class InputModel
     {
         [Required]
@@ -141,5 +193,27 @@
         [Display(Name = "Confirm password")]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
         public string ConfirmPassword { get; set; } = "";
+
+        [Required]
+        [Display(Name = "PhoneNumber")]
+        public string PhoneNumber { get; set; } = "";
+
+        [Required]
+        [Display(Name = "First Name")]
+        public string FirstName { get; set; } = "";
+
+        [Required]
+        [Display(Name = "Last Name")]
+        public string LastName { get; set; } = "";
+
+        [Required(ErrorMessage = "Role is required.")]
+        [Display(Name = "Role")]
+        public int Role { get; set; }
+
+        public bool IsActive { get; set; }
+        public int? CreatedBy { get; set; }
+        public DateTime? CreatedDateTime { get; set; }
+        public int? UpdatedBy { get; set; }
+        public DateTime? UpdatedDateTime { get; set; }
     }
 }

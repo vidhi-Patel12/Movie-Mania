@@ -1,9 +1,23 @@
 ﻿@if (!string.IsNullOrEmpty(DisplayMessage))
 {
-    var statusMessageClass = DisplayMessage.StartsWith("Error") ? "danger" : "success";
-    <div class="alert alert-@statusMessageClass" role="alert">
-        @DisplayMessage
-    </div>
+    // Determine the message type based on its content
+    var isErrorMessage = DisplayMessage.StartsWith("Error");
+    var isSuccessMessage = DisplayMessage.StartsWith("Success");
+    var statusMessageClass = DisplayMessage.StartsWith("Error") ? "danger" :
+                             DisplayMessage.StartsWith("Success") ? "green" : "info";
+
+    if (isErrorMessage)
+    {
+        <div class="alert alert-@statusMessageClass" role="alert" style="width: 160%; margin: auto;">
+            @DisplayMessage
+        </div>
+    }
+    else if (isSuccessMessage)
+    {
+        <div class="alert alert-@statusMessageClass" role="alert" style="width: 160%; margin: auto;">
+            @DisplayMessage
+        </div>
+    }   
 }
 
 @code {

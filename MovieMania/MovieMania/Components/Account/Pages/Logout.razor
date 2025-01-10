@@ -1,0 +1,23 @@
+﻿@page "/Account/Logout"
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private readonly HttpClient _httpClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HttpContext.SignOutAsync();
+        HttpContext.Response.Cookies.Delete("FirstName");
+
+        HttpContext.Response.Cookies.Delete("Role");
+        HttpContext.Response.Cookies.Delete("PhoneNumber");
+        HttpContext.Response.Cookies.Delete("UserId");
+        Navigation.NavigateTo("/Account/Login", true);
+    }
+}
