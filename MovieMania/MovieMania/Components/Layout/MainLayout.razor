@@ -1,18 +1,131 @@
 ﻿@inherits LayoutComponentBase
+@inject IHttpContextAccessor HttpContextAccessor
+@* @inject Microsoft.AspNetCore.Http.IResponseCookies ResponseCookies *@
+@inject NavigationManager NavigationManager
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<div>
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+        @if (role == 1)//Admin Navigation
+        {
+            <div class="top-row d-flex justify-content-center align-items-center px-5" style="border-color: black;background-color:black; color:white; height: 50px;">
+                <a href="/" class="brand" style="text-decoration: none; margin-right: 1rem;">
+                    <span style="color:white; font-size:1.5rem;">Movie</span>
+                    <span style="color:#0dcaf0; font-size:1rem;">Mania</span>
+                </a>
 
-        <article class="content px-4">
-            @Body
-        </article>
+                <a href="/" class="nav-link" style="color:white; margin-left: 1rem;">Home</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Dashboard</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Movies</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Genres</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Languages</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Formate</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Reviews</a>
+
+                <div class="input-group" style="margin-left: 2rem; max-width: 300px;">
+                    <input type="text" class="form-control"
+                           placeholder="I am looking for..."
+                           aria-label="Search"
+                           style="background-color:#151f30; color:white; border-radius: 20px; padding-left: 40px; height: 40px; caret-color:white;">
+                    <i class="bi bi-search" style="
+                    position: absolute;
+                    top: 50%;
+                    right: 10px;
+                    transform: translateY(-50%);
+                    color: #2f80ed;
+                    font-size: 1.2rem;"></i>
+                </div>
+                <a href="/Account/Logout" class="btn" style="background-color: #151f30; color: white; text-decoration: none; display: flex; align-items: center; padding: 10px 20px; border-radius: 20px;">
+                    @if (!string.IsNullOrEmpty(firstName))
+                    {
+                        @string.Concat(firstName.Substring(0, 1).ToUpper(), firstName.Substring(1).ToLower())
+                    }
+                    else
+                    {
+                        <span>Sign Out</span>
+                    }
+                    <i class="bi bi-box-arrow-left" style="margin-left: 8px;color:#2f80ed"></i>
+                </a>
+            </div>
+        }
+        else if (role == 2)//User Navigation
+        {
+            <div class="top-row d-flex justify-content-center align-items-center px-5" style="border-color: black;background-color:black; color:white; height: 50px;">
+                <a href="/" class="brand" style="text-decoration: none; margin-right: 1rem;">
+                    <span style="color:white; font-size:1.5rem;">Movie</span>
+                    <span style="color:#0dcaf0; font-size:1rem;">Mania</span>
+                </a>
+                <a href="/" class="nav-link" style="color:white; margin-left: 1rem;">Home</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Dashboard</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Reviews</a>
+
+                <div class="input-group" style="margin-left: 2rem; max-width: 300px;">
+                    <input type="text" class="form-control"
+                           placeholder="I am looking for..."
+                           aria-label="Search"
+                           style="background-color:#151f30; color:white; border-radius: 20px; padding-left: 40px; height: 40px; caret-color:white;">
+                    <i class="bi bi-search" style="
+                    position: absolute;
+                    top: 50%;
+                    right: 10px;
+                    transform: translateY(-50%);
+                    color: #2f80ed;
+                    font-size: 1.2rem;"></i>
+                </div>
+
+                <a href="/Account/Logout" class="btn" style="background-color: #151f30; color: white; text-decoration: none; display: flex; align-items: center; padding: 10px 20px; border-radius: 20px;">
+                    @if (!string.IsNullOrEmpty(firstName))
+                    {
+                        @string.Concat(firstName.Substring(0, 1).ToUpper(), firstName.Substring(1).ToLower())
+                    }
+                    else
+                    {
+                        <span>Sign Out</span>
+                    }
+                    <i class="bi bi-box-arrow-left" style="margin-left: 8px;color:#2f80ed"></i>
+                </a>
+            </div>
+        }
+
+        else//Common Navigation
+        {
+            <div class="top-row d-flex justify-content-center align-items-center px-5" style="border-color: black;background-color:black; color:white; height: 50px;">
+                <a href="/" class="brand" style="text-decoration: none; margin-right: 1rem;">
+                    <span style="color:white; font-size:1.5rem;">Movie</span>
+                    <span style="color:#0dcaf0; font-size:1rem;">Mania</span>
+                </a>
+                <a href="/" class="nav-link" style="color:white; margin-left: 1rem;">Home</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Dashboard</a>
+                <a href="/catalog" class="nav-link" style="color:white; margin-left: 1rem;">Reviews</a>
+
+                <div class="input-group" style="margin-left: 2rem; max-width: 300px;">
+                    <input type="text" class="form-control"
+                           placeholder="I am looking for..."
+                           aria-label="Search"
+                           style="background-color:#151f30; color:white; border-radius: 20px; padding-left: 40px; height: 40px; caret-color:white;">
+                    <i class="bi bi-search" style="
+                    position: absolute;
+                    top: 50%;
+                    right: 10px;
+                    transform: translateY(-50%);
+                    color: #2f80ed;
+                    font-size: 1.2rem;"></i>
+                </div>
+
+                <a href="/Account/Login" class="btn" style="background-color: #151f30; color: white; text-decoration: none; display: flex; align-items: center; padding: 10px 20px; border-radius: 20px;">
+                    Sign In
+                    <i class="bi bi-box-arrow-in-right" style="margin-left: 8px;color:#2f80ed"></i>
+                </a>
+            </div>
+        }
+        <style>
+            .form-control::placeholder {
+                color: white; /* Apply white color to placeholder text */
+            }
+        </style>
+        @* <article class="content px-4"> *@
+        @Body
+        @* </article> *@
     </main>
 </div>
 
@@ -21,3 +134,21 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private int? role;
+    private string firstName;
+
+    protected override void OnInitialized()
+    {
+        firstName = HttpContextAccessor.HttpContext?.Request?.Cookies["FirstName"];
+        // Retrieve the cookie directly from the HttpContext
+        var roleCookie = HttpContextAccessor.HttpContext?.Request?.Cookies["Role"];
+
+        // If the cookie exists, parse it into an integer
+        if (!string.IsNullOrEmpty(roleCookie) && int.TryParse(roleCookie, out int parsedRole))
+        {
+            role = parsedRole;
+        }
+    }    
+}

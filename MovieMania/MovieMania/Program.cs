@@ -8,6 +8,9 @@ using MovieMania.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServerSideBlazor()
+    .AddCircuitOptions(options => { options.DetailedErrors = true; });
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -25,6 +28,10 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -40,8 +47,9 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
+    app.UseDeveloperExceptionPage();
     app.UseWebAssemblyDebugging();
     app.UseMigrationsEndPoint();
 }
