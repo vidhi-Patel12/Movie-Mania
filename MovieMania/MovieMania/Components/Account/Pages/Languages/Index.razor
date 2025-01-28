@@ -1,0 +1,361 @@
+﻿@page "/Languages"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MovieMania.Models
+@using MovieMania.Data
+@using System.Text.Json
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject IConfiguration _configuration
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>Languages</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Languages</h2>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"></div>
+                        <!-- Search Bar -->
+                        <div class="col-4 text-end">
+                            <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
+                        </div>
+                        <p class="col-2">
+                            <a class="btn btn-primary" href="Languages/Create">Create New</a>
+                        </p>
+                    </div>
+
+                    <!-- Table with QuickGrid -->
+                    <QuickGrid TItem="Languages" Class="table table-striped" Items="@filteredLanguages.AsQueryable()" Pagination="@pageDetails">
+                        <PropertyColumn Property="language => language.LanguageName" Title="Language Name" Sortable="true" />
+                        <TemplateColumn Context="language" Title="Action">
+                            <a href="@($"languages/details?languageid={language.LanguageId}")"><i class="bi bi-eye-fill" style="color:#29b474"></i></a> &nbsp;
+                            @if (language.CreatedBy == LoggedInUser)
+                            {
+                                <a href="@($"languages/edit?languageid={language.LanguageId}")"><i class="bi bi-pencil-fill" style="color:#2f80ed"></i></a>
+                                <span>&nbsp;</span>
+                                <a href="/Languages" @onclick="() => OpenDeleteModal(language.LanguageId)">
+                                    <i class="bi bi-trash-fill" style="color:#eb5757"></i>
+                                </a>
+                            }
+                        </TemplateColumn>
+                    </QuickGrid>
+                    <Paginator State="@pageDetails" />
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Language Delete</h5>
+                <br />
+                <p class="text-md-center">Are you sure you want to permanently delete this language?</p>
+                <br />
+                <div class="row">
+                    <div class="col-4"></div>
+                    <div class="col-5">
+                        @*<a href="/Languages" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>*@
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
+                        <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Languages" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Languages" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    string nameFilter = "";
+    List<Languages> filteredLanguages = new List<Languages>();
+    PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
+    private System.Timers.Timer debounceTimer;
+
+    private bool showModal = false;
+    private int? selectedLanguageId;
+
+    private string ErrorMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private string SuccessMessage { get; set; }
+    private bool ShowSuccessModal { get; set; } = false;
+
+    private string SId;
+    private string LoggedInUser;
+
+    private void DebouncedHandleSearch(ChangeEventArgs e)
+    {
+        nameFilter = e.Value?.ToString();
+
+        // Reset the timer
+        debounceTimer?.Stop();
+        debounceTimer = new System.Timers.Timer(100); // 100ms debounce
+        debounceTimer.Elapsed += async (_, _) => await InvokeAsync(HandleSearch);
+        debounceTimer.Start();
+    }
+
+    private async Task HandleSearch()
+    {
+        debounceTimer?.Stop();
+        var context = DbFactory.CreateDbContext();
+        if (!string.IsNullOrWhiteSpace(nameFilter))
+        {
+            filteredLanguages = await context.Languages
+                                        .Where(x => EF.Functions.Like(
+                                            EF.Functions.Collate(x.LanguageName, "SQL_Latin1_General_CP1_CI_AS"),
+                                            $"%{nameFilter}%"))
+                                        .ToListAsync();
+        }
+        else
+        {
+            SId = _configuration["SId"];
+            LoggedInUser = _configuration["LoggedInUserId"];
+
+            //var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
+
+            if (LoggedInUser == SId)
+            {
+                filteredLanguages = await context.Languages
+                                        .Where(X => X.CreatedBy == SId)
+                                        .OrderByDescending(x => x.LanguageId)
+                                        .ToListAsync();
+                // If filteredLanguages is still empty (no data in the database), fetch from the API
+                if (!filteredLanguages.Any())
+                {
+                    using var httpClient = new HttpClient();
+
+                    // Fetch data from API
+                    var response = await httpClient.GetAsync("https://www.freetestapi.com/api/v1/languages");
+                    response.EnsureSuccessStatusCode();
+
+                    // Read the response content as a string
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine(jsonString); // Log the JSON response for debugging
+
+                    // Parse the JSON string using JsonDocument
+                    List<string> apiLanguages = new();
+                    using (var doc = JsonDocument.Parse(jsonString))
+                    {
+                        if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                        {
+                            // Extract all language names from API response
+                            foreach (var item in doc.RootElement.EnumerateArray())
+                            {
+                                var languageName = item.GetProperty("name").GetString();
+                                if (!string.IsNullOrWhiteSpace(languageName))
+                                {
+                                    apiLanguages.Add(languageName.ToLower());
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Handle error if the data format is incorrect
+                            ErrorMessage = "Invalid data.";
+                            ShowErrorModal = true;
+                            return;
+                        }
+                    }
+
+                    // Check if the languages list is not empty after fetching the API data
+                    if (apiLanguages.Any())
+                    {
+                        // Check if the languages already exist in the database
+                        var existingLanguages = await context.Languages.Select(x => x.LanguageName.ToLower()).ToListAsync();
+                        var newLanguages = apiLanguages.Where(language => !existingLanguages.Contains(language)).ToList();
+
+                        // If there are new languages, insert them into the database
+                        if (newLanguages.Any())
+                        {
+                            var languagesToAdd = newLanguages.Select(language => new Languages
+                                {
+                                    LanguageName = language,
+                                    CreatedBy = LoggedInUser,
+                                    CreatedDateTime = DateTime.Now,
+                                    UpdatedBy = null,
+                                    UpdatedDateTime = null,
+                                    IsActive = true
+                                }).ToList();
+
+                            await context.Languages.AddRangeAsync(languagesToAdd);
+                            await context.SaveChangesAsync();
+
+                            // Reload the data from the database
+                            filteredLanguages = await context.Languages
+                                        .Where(X => X.CreatedBy == SId)
+                                        .OrderByDescending(x => x.LanguageId)
+                                        .ToListAsync();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                filteredLanguages = await context.Languages
+                     .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser) && x.IsActive == true)
+                    .OrderByDescending(x => x.LanguageId)
+                    .ToListAsync();
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HandleSearch();
+    }
+
+    private void OpenDeleteModal(int languageId)
+    {
+        // Set the selected language ID and open the modal
+        selectedLanguageId = languageId;
+        showModal = true;
+    }
+
+    private void ConfirmDelete()
+    {
+        if (selectedLanguageId != null)
+        {
+            // Call your delete logic here
+            DeleteLanguage(selectedLanguageId.Value);
+            showModal = false;
+        }
+    }
+
+    private async Task DeleteLanguage(int languageId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        // Find the language by ID
+        var language = await context.Languages.FirstOrDefaultAsync(lang => lang.LanguageId == languageId);
+
+        if (language == null)
+        {
+            // Handle case where the language does not exist
+            Console.WriteLine($"Language with ID {languageId} not found.");
+            return;
+        }
+
+        language.IsActive = false;
+        language.UpdatedBy = LoggedInUser;
+        language.UpdatedDateTime = DateTime.Now;
+
+        // Attach the entity and mark it as modified
+        context.Attach(language).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+            showModal = false;
+            await HandleSearch();
+            StateHasChanged();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!LanguagesExists(language.LanguageId))
+            {
+                // Navigate to not found page if the language does not exist
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Languages");
+    }
+
+    private bool LanguagesExists(int languageId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Languages.Any(e => e.LanguageId == languageId);
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        StateHasChanged();
+    }
+}
