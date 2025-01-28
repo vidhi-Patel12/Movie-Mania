@@ -1,0 +1,56 @@
+﻿@page "/languages/details"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Languages</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Language Detail</h2>
+                    </div>
+                    @if (languages is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Language Name</dt>
+                            <dd class="col-sm-10">@languages.LanguageName</dd>
+                        </dl>
+                        <div>
+                            <a href="@($"/Languages/Edit?languageid={languages.LanguageId}")">Edit</a> |
+                            <a href="@($"/Languages")">Back to List</a>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-2"></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Languages? languages;
+
+    [SupplyParameterFromQuery]
+    private int LanguageId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        languages = await context.Languages.FirstOrDefaultAsync(m => m.LanguageId == LanguageId);
+
+        if (languages is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

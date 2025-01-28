@@ -33,40 +33,40 @@
                     </div>
                     <div class="form-floating mb-3">
                         <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                        <label for="email">Email</label>
+                        <label for="email" class="form-label text-black">Email</label>
                         <ValidationMessage For="() => Input.Email" class="text-danger" />
                     </div>
                     <div class="form-floating mb-3">
                         <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                        <label for="password">Password</label>
+                        <label for="password" class="form-label text-black">Password</label>
                         <ValidationMessage For="() => Input.Password" class="text-danger" />
                     </div>
                     <div class="form-floating mb-3">
                         <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                        <label for="confirm-password">Confirm Password</label>
+                        <label for="confirm-password" class="form-label text-black">Confirm Password</label>
                         <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
                     </div>
                     <div class="form-floating mb-3">
                         <InputText type="text" @bind-Value="Input.PhoneNumber" class="form-control" autocomplete="phoneNumber" aria-required="true" placeholder="Phone Number" />
-                        <label for="phoneNumber">Phone Number</label>
+                        <label for="phoneNumber" class="form-label text-black">Phone Number</label>
                         <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
                     </div>
                     <div class="form-floating mb-3">
                         <InputText @bind-Value="Input.FirstName" class="form-control" autocomplete="firstName" aria-required="true" placeholder="First Name" />
-                        <label for="firstName">First Name</label>
+                        <label for="firstName" class="form-label text-black">First Name</label>
                         <ValidationMessage For="() => Input.FirstName" class="text-danger" />
                     </div>
                     <div class="form-floating mb-3">
                         <InputText @bind-Value="Input.LastName" class="form-control" autocomplete="lastName" aria-required="true" placeholder="Last Name" />
-                        <label for="lastName">Last Name</label>
+                        <label for="lastName" class="form-label text-black">Last Name</label>
                         <ValidationMessage For="() => Input.LastName" class="text-danger" />
                     </div>
 
                     <div class="form-floating mb-3">
                         <InputSelect @bind-Value="Input.Role" class="form-control" autocomplete="role" aria-required="true" placeholder="Role">
                             <option value="" disabled selected>Role</option>
-                            <option value="1">Admin</option>
-                            <option value="2">User</option>
+                            <option value="2">Admin</option>
+                            <option value="3">User</option>
                         </InputSelect>
                         <label for="role" class="form-label">Role</label>
                         <ValidationMessage For="() => Input.Role" class="text-danger" />
@@ -101,7 +101,7 @@
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
 
-    private string SelectedRoleName => Input.Role == 1 ? "Admin" : "User"; // Maps Role value to Name
+    private string SelectedRoleName => Input.Role == 2 ? "Admin" : "User"; // Maps Role value to Name
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
