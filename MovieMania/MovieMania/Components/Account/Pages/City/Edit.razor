@@ -1,0 +1,139 @@
+﻿@page "/City/Edit"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+
+@using Microsoft.AspNetCore.Antiforgery;
+<PageTitle>City</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit City</h2>
+                    </div>
+                    @if (City is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-4">
+                                <EditForm method="post" Model="City" OnValidSubmit="UpdateCity" FormName="Edit" Enhance>
+                                    <DataAnnotationsValidator />
+                                    <input type="hidden" name="City.CityId" value="@City.CityId" />
+                                    <div class="mb-3">
+                                        <label for="cityname" class="form-label text-black">City Name:</label>
+                                        <InputText id="cityname" @bind-Value="City.CityName" class="form-control" />
+                                        <ValidationMessage For="() => City.CityName" class="text-danger" />
+                                    </div>
+                                    <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createdby" value="City.CreatedBy" class="form-control" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createddatetime" value="City.CreatedDateTime" class="form-control" />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </EditForm>
+                            </div>
+                        </div>
+                    }
+                    <br />
+                    <div>
+                        <a href="/City">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int CityId { get; set; }
+
+    [SupplyParameterFromForm]
+    private City? City { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        City ??= await context.City.FirstOrDefaultAsync(m => m.CityId == CityId);
+
+        if (City is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateCity()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Retrieve the UserId from the cookies
+        var userId = HttpContext.Request.Cookies["UserId"];
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingCity = await context.City
+        .AsNoTracking()
+        .FirstOrDefaultAsync(lang => lang.CityId == City.CityId);
+
+        if (existingCity == null)
+        {
+            // Handle case where the city does not exist
+            Console.WriteLine($"City with ID {City.CityId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        // Preserve the original CreatedBy and CreatedDateTime values
+        City.CreatedBy = existingCity.CreatedBy;
+        City.CreatedDateTime = existingCity.CreatedDateTime;
+
+        // Set the necessary properties for update
+        City.IsActive = true;
+        City.UpdatedBy = userId;
+        City.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(City!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CityExists(City!.CityId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/City");
+    }
+
+    private bool CityExists(int cityid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.City.Any(e => e.CityId == cityid);
+    }
+}

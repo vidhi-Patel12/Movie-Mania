@@ -1,0 +1,139 @@
+﻿@page "/Country/Edit"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+
+@using Microsoft.AspNetCore.Antiforgery;
+<PageTitle>Country</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Country</h2>
+                    </div>
+                    @if (Country is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-4">
+                                <EditForm method="post" Model="Country" OnValidSubmit="UpdateCountry" FormName="Edit" Enhance>
+                                    <DataAnnotationsValidator />
+                                    <input type="hidden" name="Country.CountryId" value="@Country.CountryId" />
+                                    <div class="mb-3">
+                                        <label for="countryname" class="form-label text-black">Country Name:</label>
+                                        <InputText id="countryname" @bind-Value="Country.CountryName" class="form-control" />
+                                        <ValidationMessage For="() => Country.CountryName" class="text-danger" />
+                                    </div>
+                                    <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createdby" value="Country.CreatedBy" class="form-control" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createddatetime" value="Country.CreatedDateTime" class="form-control" />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </EditForm>
+                            </div>
+                        </div>
+                    }
+                    <br />
+                    <div>
+                        <a href="/Country">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int CountryId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Country? Country { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Country ??= await context.Country.FirstOrDefaultAsync(m => m.CountryId == CountryId);
+
+        if (Country is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateCountry()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Retrieve the UserId from the cookies
+        var userId = HttpContext.Request.Cookies["UserId"];
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingCountry = await context.Country
+        .AsNoTracking()
+        .FirstOrDefaultAsync(lang => lang.CountryId == Country.CountryId);
+
+        if (existingCountry == null)
+        {
+            // Handle case where the country does not exist
+            Console.WriteLine($"Country with ID {Country.CountryId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        // Preserve the original CreatedBy and CreatedDateTime values
+        Country.CreatedBy = existingCountry.CreatedBy;
+        Country.CreatedDateTime = existingCountry.CreatedDateTime;
+
+        // Set the necessary properties for update
+        Country.IsActive = true;
+        Country.UpdatedBy = userId;
+        Country.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(Country!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CountryExists(Country!.CountryId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Country");
+    }
+
+    private bool CountryExists(int countryid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Country.Any(e => e.CountryId == countryid);
+    }
+}
