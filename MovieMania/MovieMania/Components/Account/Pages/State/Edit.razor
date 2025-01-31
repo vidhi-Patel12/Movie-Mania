@@ -1,0 +1,139 @@
+﻿@page "/State/Edit"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+
+@using Microsoft.AspNetCore.Antiforgery;
+<PageTitle>State</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit State</h2>
+                    </div>
+                    @if (State is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-4">
+                                <EditForm method="post" Model="State" OnValidSubmit="UpdateState" FormName="Edit" Enhance>
+                                    <DataAnnotationsValidator />
+                                    <input type="hidden" name="State.StateId" value="@State.StateId" />
+                                    <div class="mb-3">
+                                        <label for="statename" class="form-label text-black">State Name:</label>
+                                        <InputText id="statename" @bind-Value="State.StateName" class="form-control" />
+                                        <ValidationMessage For="() => State.StateName" class="text-danger" />
+                                    </div>
+                                    <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createdby" value="State.CreatedBy" class="form-control" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createddatetime" value="State.CreatedDateTime" class="form-control" />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </EditForm>
+                            </div>
+                        </div>
+                    }
+                    <br />
+                    <div>
+                        <a href="/State">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int StateId { get; set; }
+
+    [SupplyParameterFromForm]
+    private State? State { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        State ??= await context.State.FirstOrDefaultAsync(m => m.StateId == StateId);
+
+        if (State is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateState()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Retrieve the UserId from the cookies
+        var userId = HttpContext.Request.Cookies["UserId"];
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingState = await context.State
+        .AsNoTracking()
+        .FirstOrDefaultAsync(lang => lang.StateId == State.StateId);
+
+        if (existingState == null)
+        {
+            // Handle case where the state does not exist
+            Console.WriteLine($"State with ID {State.StateId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        // Preserve the original CreatedBy and CreatedDateTime values
+        State.CreatedBy = existingState.CreatedBy;
+        State.CreatedDateTime = existingState.CreatedDateTime;
+
+        // Set the necessary properties for update
+        State.IsActive = true;
+        State.UpdatedBy = userId;
+        State.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(State!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!StateExists(State!.StateId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/State");
+    }
+
+    private bool StateExists(int stateid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.State.Any(e => e.StateId == stateid);
+    }
+}

@@ -1,0 +1,139 @@
+﻿@page "/formats/edit"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+
+@using Microsoft.AspNetCore.Antiforgery;
+<PageTitle>Formats</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Language</h2>
+                    </div>
+                    @if (Formats is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-4">
+                                <EditForm method="post" Model="Formats" OnValidSubmit="UpdateFormats" FormName="Edit" Enhance>
+                                    <DataAnnotationsValidator />
+                                    <input type="hidden" name="Formats.FormatId" value="@Formats.FormatId" />
+                                    <div class="mb-3">
+                                        <label for="formatname" class="form-label text-black">Formats Name:</label>
+                                        <InputText id="formatname" @bind-Value="Formats.FormatName" class="form-control" />
+                                        <ValidationMessage For="() => Formats.FormatName" class="text-danger" />
+                                    </div>
+                                    <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createdby" value="Formats.CreatedBy" class="form-control" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createddatetime" value="Formats.CreatedDateTime" class="form-control" />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </EditForm>
+                            </div>
+                        </div>
+                    }
+                    <br />
+                    <div>
+                        <a href="/Formats">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int FormatsId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Formats? Formats { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Formats ??= await context.Formats.FirstOrDefaultAsync(m => m.FormatId == FormatsId);
+
+        if (Formats is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateFormats()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Retrieve the UserId from the cookies
+        var userId = HttpContext.Request.Cookies["UserId"];
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingFormat = await context.Formats
+        .AsNoTracking()
+        .FirstOrDefaultAsync(format => format.FormatId == Formats.FormatId);
+
+        if (existingFormat == null)
+        {
+            // Handle case where the format does not exist
+            Console.WriteLine($"Format with ID {Formats.FormatId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        // Preserve the original CreatedBy and CreatedDateTime values
+        Formats.CreatedBy = existingFormat.CreatedBy;
+        Formats.CreatedDateTime = existingFormat.CreatedDateTime;
+
+        // Set the necessary properties for update
+        Formats.IsActive = true;
+        Formats.UpdatedBy = userId;
+        Formats.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(Formats!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!FormatsExists(Formats!.FormatId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Formats");
+    }
+
+    private bool FormatsExists(int formatid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Formats.Any(e => e.FormatId == formatid);
+    }
+}

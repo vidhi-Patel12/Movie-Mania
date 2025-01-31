@@ -1,4 +1,4 @@
-﻿@page "/Languages"
+﻿@page "/City"
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using MovieMania.Models
@@ -13,7 +13,7 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 
-<PageTitle>Languages</PageTitle>
+<PageTitle>City</PageTitle>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -25,7 +25,7 @@
             <div class="card shadow">
                 <div class="card-body" style="background-color: lightgray;">
                     <div class="row text-black">
-                        <h2>Languages</h2>
+                        <h2>City</h2>
                     </div>
                     <div class="row">
                         <div class="col-6"></div>
@@ -34,20 +34,20 @@
                             <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
                         </div>
                         <p class="col-2">
-                            <a class="btn btn-primary" href="Languages/Create">Create New</a>
+                            <a class="btn btn-primary" href="City/Create">Create New</a>
                         </p>
                     </div>
 
                     <!-- Table with QuickGrid -->
-                    <QuickGrid TItem="Languages" Class="table table-striped" Items="@filteredLanguages.AsQueryable()" Pagination="@pageDetails">
-                        <PropertyColumn Property="language => language.LanguageName" Title="Language Name" Sortable="true" />
-                        <TemplateColumn Context="language" Title="Action">
-                            <a href="@($"languages/details?languageid={language.LanguageId}")"><i class="bi bi-eye-fill" style="color:#29b474"></i></a> &nbsp;
-                            @if (language.CreatedBy == LoggedInUser)
+                    <QuickGrid TItem="City" Class="table table-striped" Items="@filteredCity.AsQueryable()" Pagination="@pageDetails">
+                        <PropertyColumn Property="city => city.CityName" Title="City Name" Sortable="true" />
+                        <TemplateColumn Context="city" Title="Action">
+                            <a href="@($"city/details?cityid={city.CityId}")"><i class="bi bi-eye-fill" style="color:#29b474"></i></a> &nbsp;
+                            @if (city.CreatedBy == LoggedInUser)
                             {
-                                <a href="@($"languages/edit?languageid={language.LanguageId}")"><i class="bi bi-pencil-fill" style="color:#2f80ed"></i></a>
+                                <a href="@($"city/edit?cityid={city.CityId}")"><i class="bi bi-pencil-fill" style="color:#2f80ed"></i></a>
                                 <span>&nbsp;</span>
-                                <a href="/Languages" @onclick="() => OpenDeleteModal(language.LanguageId)">
+                                <a href="/City" @onclick="() => OpenDeleteModal(city.CityId)">
                                     <i class="bi bi-trash-fill" style="color:#eb5757"></i>
                                 </a>
                             }
@@ -67,14 +67,14 @@
         <div class="modal-dialog">
             <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
                 <br />
-                <h5 class="modal-title text-md-center text-white">Language Delete</h5>
+                <h5 class="modal-title text-md-center text-white">City Delete</h5>
                 <br />
-                <p class="text-md-center">Are you sure you want to permanently delete this language?</p>
+                <p class="text-md-center">Are you sure you want to permanently delete this city?</p>
                 <br />
                 <div class="row">
                     <div class="col-4"></div>
                     <div class="col-5">
-                        @*<a href="/Languages" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>*@
+                        @*<a href="/City" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>*@
                         <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
                         <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
                     </div>
@@ -101,7 +101,7 @@
                 <div class="row">
                     <div class="col-5"></div>
                     <div class="col-5">
-                        <a href="/Languages" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                        <a href="/City" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
                     </div>
                     <div class="col-2"></div>
                     <br />
@@ -126,7 +126,7 @@
                 <div class="row">
                     <div class="col-5"></div>
                     <div class="col-5">
-                        <a href="/Languages" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                        <a href="/City" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
                     </div>
                     <div class="col-2"></div>
                     <br />
@@ -139,12 +139,12 @@
 
 @code {
     string nameFilter = "";
-    List<Languages> filteredLanguages = new List<Languages>();
+    List<City> filteredCity = new List<City>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
     private System.Timers.Timer debounceTimer;
 
     private bool showModal = false;
-    private int? selectedLanguageId;
+    private int? selectedCityId;
 
     private string ErrorMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
@@ -171,9 +171,9 @@
         var context = DbFactory.CreateDbContext();
         if (!string.IsNullOrWhiteSpace(nameFilter))
         {
-            filteredLanguages = await context.Languages
+            filteredCity = await context.City
                                         .Where(x => EF.Functions.Like(
-                                            EF.Functions.Collate(x.LanguageName, "SQL_Latin1_General_CP1_CI_AS"),
+                                            EF.Functions.Collate(x.CityName, "SQL_Latin1_General_CP1_CI_AS"),
                                             $"%{nameFilter}%"))
                                         .ToListAsync();
         }
@@ -182,40 +182,80 @@
             SId = _configuration["SId"];
             LoggedInUser = _configuration["LoggedInUserId"];
 
-            //var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
-
             if (LoggedInUser == SId)
             {
-                filteredLanguages = await context.Languages
+                filteredCity = await context.City
                                         .Where(X => X.CreatedBy == SId && X.IsActive == true)
-                                        .OrderByDescending(x => x.LanguageId)
+                                        .OrderByDescending(x => x.CityId)
                                         .ToListAsync();
-                // If filteredLanguages is still empty (no data in the database), fetch from the API
-                if (!filteredLanguages.Any())
+                // If filteredCity is still empty (no data in the database), fetch from the API
+                if (!filteredCity.Any())
                 {
                     using var httpClient = new HttpClient();
 
                     // Fetch data from API
-                    var response = await httpClient.GetAsync("https://www.freetestapi.com/api/v1/languages");
+                    var response = await httpClient.GetAsync("https://countriesnow.space/api/v0.1/countries");
                     response.EnsureSuccessStatusCode();
 
-                    // Read the response content as a string
+                    // Read response as string
                     var jsonString = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine(jsonString); // Log the JSON response for debugging
+                    Console.WriteLine(jsonString); // Debugging log
 
-                    // Parse the JSON string using JsonDocument
-                    List<string> apiLanguages = new();
+                    List<State> apiState = new();
+                    List<City> apiCities = new();  // For storing cities
+
                     using (var doc = JsonDocument.Parse(jsonString))
                     {
-                        if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                        var root = doc.RootElement;
+                        if (root.TryGetProperty("data", out var dataElement) && dataElement.ValueKind == JsonValueKind.Array)
                         {
-                            // Extract all language names from API response
-                            foreach (var item in doc.RootElement.EnumerateArray())
+                            foreach (var country in dataElement.EnumerateArray())
                             {
-                                var languageName = item.GetProperty("name").GetString();
-                                if (!string.IsNullOrWhiteSpace(languageName))
+                                if (country.TryGetProperty("country", out var countryNameElement) &&
+                                    country.TryGetProperty("cities", out var citiesElement) &&
+                                    citiesElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    apiLanguages.Add(languageName.ToLower());
+                                    string countryName = countryNameElement.GetString()?.ToLower(); // Convert to lowercase
+
+                                    // Find the corresponding CountryId from the database
+                                    var countryData = await context.Country
+                                        .Where(c => c.CountryName.ToLower() == countryName)
+                                        .Select(c => new { c.CountryId, c.CountryName })
+                                        .FirstOrDefaultAsync();
+
+                                    if (countryData != null)
+                                    {
+                                        // Find states corresponding to the country
+                                        var states = await context.State
+                                            .Where(s => s.CountryId == countryData.CountryId)
+                                            .ToListAsync();
+
+                                        foreach (var state in states)
+                                        {
+                                            // For each state, find cities from the API
+                                            foreach (var cityName in citiesElement.EnumerateArray())
+                                            {
+                                                string city = cityName.GetString();
+                                                if (!string.IsNullOrWhiteSpace(city))
+                                                {
+                                                    bool cityExists = await context.City
+                                                        .AnyAsync(c => c.CityName == city && c.StateId == state.StateId);
+
+                                                    if (!cityExists)
+                                                    {
+                                                        apiCities.Add(new City
+                                                            {
+                                                                CityName = city,
+                                                                StateId = state.StateId, // Assign the matched StateId
+                                                                CreatedBy = LoggedInUser,
+                                                                CreatedDateTime = DateTime.Now,
+                                                                IsActive = true
+                                                            });
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -228,43 +268,27 @@
                         }
                     }
 
-                    // Check if the languages list is not empty after fetching the API data
-                    if (apiLanguages.Any())
+                    // Insert new cities
+                    if (apiCities.Any())
                     {
-                        // Check if the languages already exist in the database
-                        var existingLanguages = await context.Languages.Select(x => x.LanguageName.ToLower()).ToListAsync();
-                        var newLanguages = apiLanguages.Where(language => !existingLanguages.Contains(language)).ToList();
-
-                        // If there are new languages, insert them into the database
-                        if (newLanguages.Any())
-                        {
-                            var languagesToAdd = newLanguages.Select(language => new Languages
-                                {
-                                    LanguageName = language,
-                                    CreatedBy = LoggedInUser,
-                                    CreatedDateTime = DateTime.Now,
-                                    UpdatedBy = null,
-                                    UpdatedDateTime = null,
-                                    IsActive = true
-                                }).ToList();
-
-                            await context.Languages.AddRangeAsync(languagesToAdd);
-                            await context.SaveChangesAsync();
-
-                            // Reload the data from the database
-                            filteredLanguages = await context.Languages
-                                        .Where(X => X.CreatedBy == SId)
-                                        .OrderByDescending(x => x.LanguageId)
-                                        .ToListAsync();
-                        }
+                        await context.City.AddRangeAsync(apiCities);
+                        await context.SaveChangesAsync();
                     }
+
+                    // Refresh filtered cities
+                    filteredCity = await context.City
+                        .Where(x => x.CreatedBy == SId && x.IsActive == true)
+                        .OrderByDescending(x => x.CityId)
+                        .ToListAsync();
                 }
+
             }
+
             else
             {
-                filteredLanguages = await context.Languages
+                filteredCity = await context.City
                      .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser) && x.IsActive == true)
-                    .OrderByDescending(x => x.LanguageId)
+                    .OrderByDescending(x => x.CityId)
                     .ToListAsync();
             }
         }
@@ -275,24 +299,24 @@
         await HandleSearch();
     }
 
-    private void OpenDeleteModal(int languageId)
+    private void OpenDeleteModal(int cityId)
     {
-        // Set the selected language ID and open the modal
-        selectedLanguageId = languageId;
+        // Set the selected state ID and open the modal
+        selectedCityId = cityId;
         showModal = true;
     }
 
     private void ConfirmDelete()
     {
-        if (selectedLanguageId != null)
+        if (selectedCityId != null)
         {
             // Call your delete logic here
-            DeleteLanguage(selectedLanguageId.Value);
+            DeleteCity(selectedCityId.Value);
             showModal = false;
         }
     }
 
-    private async Task DeleteLanguage(int languageId)
+    private async Task DeleteCity(int cityId)
     {
         using var context = DbFactory.CreateDbContext();
 
@@ -303,22 +327,22 @@
             return;
         }
 
-        // Find the language by ID
-        var language = await context.Languages.FirstOrDefaultAsync(lang => lang.LanguageId == languageId);
+        // Find the city by ID
+        var city = await context.City.FirstOrDefaultAsync(lang => lang.CityId == cityId);
 
-        if (language == null)
+        if (city == null)
         {
-            // Handle case where the language does not exist
-            Console.WriteLine($"Language with ID {languageId} not found.");
+            // Handle case where the city does not exist
+            Console.WriteLine($"City with ID {cityId} not found.");
             return;
         }
 
-        language.IsActive = false;
-        language.UpdatedBy = LoggedInUser;
-        language.UpdatedDateTime = DateTime.Now;
+        city.IsActive = false;
+        city.UpdatedBy = LoggedInUser;
+        city.UpdatedDateTime = DateTime.Now;
 
         // Attach the entity and mark it as modified
-        context.Attach(language).State = EntityState.Modified;
+        context.Attach(city).State = EntityState.Modified;
 
         try
         {
@@ -329,9 +353,9 @@
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!LanguagesExists(language.LanguageId))
+            if (!CityExists(city.CityId))
             {
-                // Navigate to not found page if the language does not exist
+                // Navigate to not found page if the city does not exist
                 NavigationManager.NavigateTo("notfound");
             }
             else
@@ -339,13 +363,13 @@
                 throw;
             }
         }
-        NavigationManager.NavigateTo("/Languages");
+        NavigationManager.NavigateTo("/City");
     }
 
-    private bool LanguagesExists(int languageId)
+    private bool CityExists(int cityId)
     {
         using var context = DbFactory.CreateDbContext();
-        return context.Languages.Any(e => e.LanguageId == languageId);
+        return context.City.Any(e => e.CityId == cityId);
     }
 
     private void CloseErrorModal()
