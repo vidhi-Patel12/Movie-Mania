@@ -4,6 +4,7 @@
 @inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject IAntiforgery Antiforgery
+@inject IConfiguration  _configuration
 
 @using Microsoft.AspNetCore.Antiforgery;
 <PageTitle>Genres</PageTitle>
@@ -66,6 +67,8 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
+    private string? LoggedInUser;
+
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
@@ -81,35 +84,28 @@
     {
         using var context = DbFactory.CreateDbContext();
 
-        // Retrieve the UserId from the cookies
-        var userId = HttpContext.Request.Cookies["UserId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
 
-        if (string.IsNullOrEmpty(userId))
+        if (string.IsNullOrEmpty(LoggedInUser))
         {
-            // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
             return;
         }
-
         var existingGenre = await context.Genres
         .AsNoTracking()
         .FirstOrDefaultAsync(genre => genre.GenresId == Genres.GenresId);
 
         if (existingGenre == null)
         {
-            // Handle case where the genre does not exist
             Console.WriteLine($"Genre with ID {Genres.GenresId} not found.");
             NavigationManager.NavigateTo("notfound");
             return;
         }
 
-        // Preserve the original CreatedBy and CreatedDateTime values
         Genres.CreatedBy = existingGenre.CreatedBy;
         Genres.CreatedDateTime = existingGenre.CreatedDateTime;
-
-        // Set the necessary properties for update
         Genres.IsActive = true;
-        Genres.UpdatedBy = userId;
+        Genres.UpdatedBy = LoggedInUser;
         Genres.UpdatedDateTime = DateTime.Now;
 
         context.Attach(Genres!).State = EntityState.Modified;

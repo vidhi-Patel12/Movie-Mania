@@ -1,0 +1,106 @@
+﻿@page "/ScreenSeats/Details"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>ScreenSeats</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Screen Seats Detail</h2>
+                    </div>
+                    @if (screenseats is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <dl class="row text-black">
+                            <dt class="col-sm-2">Cinema</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(cinemaName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Screen Name</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(screenName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">SeatType Name</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(seattypeName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Total Seats</dt>
+                            <dd class="col-sm-10">@screenseats.TotalSeats</dd>
+                        </dl>
+                        <div>
+                            <a href="@($"/ScreenSeats/Edit?screenseatid={screenseats.ScreenSeatId}")">Edit</a> |
+                            <a href="@($"/ScreenSeats")">Back to List</a>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-2"></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ScreenSeats? screenseats;
+
+    [SupplyParameterFromQuery]
+    private int ScreenSeatId { get; set; }
+
+    private string screenName = string.Empty;
+    private string cinemaName = string.Empty;
+    private string seattypeName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Fetch the ScreenSeat based on ScreenSeatId
+        screenseats = await context.ScreenSeats
+            .FirstOrDefaultAsync(m => m.ScreenSeatId == ScreenSeatId);
+
+        if (screenseats is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+             
+        var screen = await context.Screen
+            .FirstOrDefaultAsync(s => s.ScreenId == screenseats.ScreenId);
+
+        screenName = screen?.ScreenName ?? "N/A";
+
+        if (screen != null)
+        {
+            var cinema = await context.Cinema
+                .FirstOrDefaultAsync(c => c.CinemaId == screen.CinemaId);
+
+            cinemaName = cinema?.CinemaName ?? "N/A";
+        }
+        else
+        {
+            cinemaName = "N/A";
+        }
+        var seattype = await context.SeatType
+            .FirstOrDefaultAsync(s => s.SeatTypeId == screenseats.SeatTypeId);
+
+        seattypeName = seattype?.SeatTypeName ?? "N/A";
+    }
+
+    public string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+        return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+}

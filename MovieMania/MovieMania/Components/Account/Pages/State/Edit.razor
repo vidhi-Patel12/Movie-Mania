@@ -81,12 +81,10 @@
     {
         using var context = DbFactory.CreateDbContext();
 
-        // Retrieve the UserId from the cookies
         var userId = HttpContext.Request.Cookies["UserId"];
 
         if (string.IsNullOrEmpty(userId))
         {
-            // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
             return;
         }
@@ -97,17 +95,13 @@
 
         if (existingState == null)
         {
-            // Handle case where the state does not exist
             Console.WriteLine($"State with ID {State.StateId} not found.");
             NavigationManager.NavigateTo("notfound");
             return;
         }
 
-        // Preserve the original CreatedBy and CreatedDateTime values
         State.CreatedBy = existingState.CreatedBy;
         State.CreatedDateTime = existingState.CreatedDateTime;
-
-        // Set the necessary properties for update
         State.IsActive = true;
         State.UpdatedBy = userId;
         State.UpdatedDateTime = DateTime.Now;

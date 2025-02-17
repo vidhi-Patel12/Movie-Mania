@@ -1,0 +1,384 @@
+﻿@page "/ScreenSeats/Edit"
+
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using Microsoft.AspNetCore.Antiforgery;
+@using System.Globalization
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IConfiguration _configuration
+@inject IAntiforgery Antiforgery
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>ScreenSeats</PageTitle>
+
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Screen Seats</h2>
+                    </div>
+                    @if (ScreenSeats is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <EditForm method="post" Model="ScreenSeats" OnValidSubmit="UpdateScreenSeats" FormName="Edit" Enhance>
+                            <DataAnnotationsValidator />
+                            <input type="hidden" name="ScreenSeats.ScreenSeatId" value="@ScreenSeats.ScreenSeatId" />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="ScreenId" class="form-label text-black">Screen Name</label>
+                                        </div>
+                                        <InputSelect @bind-Value="SelectedCinemaId" class="form-control" @oninput="OnCinemaChanged">
+                                            <option value="">Select Cinema</option>
+                                            @foreach (var cinema in Cinemas)
+                                            {
+                                                <option value="@cinema.CinemaId">
+                                                    @CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cinema.CinemaName.ToLower())
+                                                </option>
+                                            }
+                                        </InputSelect>
+
+                                        <ValidationMessage For="() => ScreenSeats.ScreenId" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="ScreenId" class="form-label text-black">Screen Name</label>
+                                        </div>
+                                        <InputSelect @bind-Value="ScreenSeats.ScreenId" class="form-control" @oninput="OnScreenChanged">
+                                            <option value="">Select Screen</option>
+                                            @foreach (var screen in Screens)
+                                            {
+                                                <option value="@screen.ScreenId">
+                                                    @CultureInfo.CurrentCulture.TextInfo.ToTitleCase(screen.ScreenName.ToLower())
+                                                </option>
+                                            }
+                                        </InputSelect>
+
+                                        <ValidationMessage For="() => ScreenSeats.ScreenId" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="SeatTypeId" class="form-label text-black">Seat Type Name</label>
+                                        </div>
+                                        <InputSelect @bind-Value="ScreenSeats.SeatTypeId" class="form-control" @oninput="OnSeatTypeChanged">
+                                            <option value="">Select SeatType</option>
+                                            @foreach (var seattype in SeatTypes)
+                                            {
+                                                <option value="@seattype.SeatTypeId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(seattype.SeatTypeName.ToLower())</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => ScreenSeats.SeatTypeId" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label for="totalSeats" class="form-label text-black">Total Seats</label>
+                                        <InputNumber id="totalSeats" @bind-Value="ScreenSeats.TotalSeats" class="form-control" />
+                                        <ValidationMessage For="() => ScreenSeats.TotalSeats" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext).RequestToken" />
+                            <div class="mb-3">
+                                <input type="hidden" id="createdby" value="ScreenSeats.CreatedBy" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <input type="hidden" id="createddatetime" value="ScreenSeats.CreatedDateTime" class="form-control" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </EditForm>
+                    }
+                    <br />
+                    <div>
+                        <a href="/ScreenSeats">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/ScreenSeats" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/ScreenSeats" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    private int ScreenSeatId { get; set; }
+
+    [SupplyParameterFromForm]
+    private ScreenSeats? ScreenSeats { get; set; }
+
+    private string? LoggedInUser;
+
+    private List<SeatType> SeatTypes { get; set; } = new();
+    private List<Screen> Screens { get; set; } = new();
+    private List<Screen> FilteredScreens { get; set; } = new();
+
+    private int? SelectedCinemaId { get; set; }
+    private List<Cinema> Cinemas { get; set; } = new();
+
+    private string SelectedSeatTypeName { get; set; } = string.Empty;
+    private int selectedSeatType;
+
+    private string SelectedScreenName { get; set; } = string.Empty;
+    private int selectedScreen;
+
+    private string SelectedCinemaName { get; set; } = string.Empty;
+    private int selectedCinema;
+
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+    private string? SId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        ScreenSeats = await context.ScreenSeats.FirstOrDefaultAsync(m => m.ScreenSeatId == ScreenSeatId);
+
+        if (ScreenSeats is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+        await LoadCinemas();
+
+        var screen = await context.Screen.FirstOrDefaultAsync(s => s.ScreenId == ScreenSeats.ScreenId);
+        if (screen != null)
+        {
+            SelectedCinemaId = screen.CinemaId; 
+            await LoadScreens(SelectedCinemaId ?? 0); 
+        }
+        await LoadSeatTypes();
+    }
+
+    private async Task LoadCinemas()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        Cinemas = await context.Cinema
+            .Where(c => context.Screen.Any(s => s.CinemaId == c.CinemaId))
+            .ToListAsync();
+    }
+
+    private async Task OnCinemaChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int cinemaId))
+        {
+            SelectedCinemaId = cinemaId;
+            await LoadScreens(cinemaId);
+            ScreenSeats.ScreenId = Screens.Any() ? Screens.First().ScreenId : 0; // Default selection
+        }
+        else
+        {
+            SelectedCinemaId = null;
+            Screens.Clear();
+        }
+        StateHasChanged(); 
+    }
+
+    private async Task LoadScreens(int? cinemaId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        Screens = await context.Screen
+            .Where(s => s.CinemaId == cinemaId)
+            .ToListAsync();
+    }
+
+    private async Task OnScreenChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var screenId))
+        {
+            ScreenSeats.ScreenId = screenId;
+        }
+    }
+
+    private async Task LoadSeatTypes()
+    {
+        using var context = DbFactory.CreateDbContext();
+        SeatTypes = await context.SeatType.ToListAsync();
+    }
+
+    private async Task OnSeatTypeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var seatTypeId))
+        {
+            ScreenSeats.SeatTypeId = seatTypeId;
+        }
+    }
+
+    private async Task UpdateScreenSeats()
+    {
+        ErrorMessage = "";
+        SuccessMessage = "";
+        using var context = DbFactory.CreateDbContext();
+
+        SId = _configuration["SId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }                
+        var existingScreenSeats = await context.ScreenSeats
+            .AsNoTracking()
+            .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser)
+                        && x.ScreenId == ScreenSeats.ScreenId
+                        && x.SeatTypeId == ScreenSeats.SeatTypeId)
+            .FirstOrDefaultAsync();
+
+        if (existingScreenSeats == null)
+        {
+            Console.WriteLine($"ScreenSeats with ID {ScreenSeats.ScreenSeatId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        // Fetch the total allowed seats for the given ScreenId
+        var screen = await context.Screen
+         .Where(s => s.ScreenId == ScreenSeats.ScreenId)
+         .FirstOrDefaultAsync();
+
+        if (screen == null)
+        {
+            ErrorMessage = $"Screen not found.";
+            ShowErrorModal = true;
+            return;
+        }       
+
+        int previousSeats = existingScreenSeats?.TotalSeats ?? 0; // Previous seat count
+        int totalAssignedSeats = await context.ScreenSeats
+            .Where(ss => ss.ScreenId == ScreenSeats.ScreenId && ss.ScreenSeatId != ScreenSeats.ScreenSeatId)
+            .SumAsync(ss => ss.TotalSeats); // Sum other seats excluding the current one
+
+        // Calculate the new total after update
+        int newTotalSeats = totalAssignedSeats + ScreenSeats.TotalSeats; 
+
+        // Ensure it does not exceed the allowed limit
+        if (newTotalSeats > screen.TotalSeats)
+        {
+            ErrorMessage = $"Total seats cannot exceed {screen.TotalSeats}. " +
+                           $"Currently assigned (excluding this): {totalAssignedSeats}, " +
+                           $"Trying to add/update: {ScreenSeats.TotalSeats}, " +
+                           $"Maximum allowed: {screen.TotalSeats}";
+            ShowErrorModal = true;
+            return;
+        }
+
+        existingScreenSeats.TotalSeats = ScreenSeats.TotalSeats;        
+        ScreenSeats.CreatedBy = existingScreenSeats.CreatedBy;
+        ScreenSeats.CreatedDateTime = existingScreenSeats.CreatedDateTime;
+        ScreenSeats.IsActive = true;
+        ScreenSeats.UpdatedBy = LoggedInUser;
+        ScreenSeats.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(ScreenSeats!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ScreenSeatsExists(ScreenSeats!.ScreenSeatId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/ScreenSeats");
+    }
+
+    private bool ScreenSeatsExists(int screenseatid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.ScreenSeats.Any(e => e.ScreenSeatId == screenseatid);
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        NavigationManager.NavigateTo("/ScreenSeats");
+    }
+}

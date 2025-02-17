@@ -1,0 +1,362 @@
+﻿@page "/MovieScreen/Edit"
+
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using Microsoft.AspNetCore.Antiforgery;
+@using System.Globalization
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IConfiguration _configuration
+@inject IAntiforgery Antiforgery
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>MovieScreen</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Movie Screen</h2>
+                    </div>
+                    @if (MovieScreen is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <EditForm method="post" Model="MovieScreen" OnValidSubmit="UpdateMovieScreen" FormName="Edit" Enhance>
+                            <DataAnnotationsValidator />
+                            <input type="hidden" name="MovieScreen.MovieScreenId" value="@MovieScreen.MovieScreenId" />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="cinemaId" class="form-label text-black">Cinema</label>
+                                        </div>
+                                        <InputSelect @bind-Value="SelectedCinemaId" class="form-control" @oninput="OnCinemaChanged">
+                                            <option value="">Select Cinema</option>
+                                            @foreach (var cinema in Cinemas)
+                                            {
+                                                <option value="@cinema.CinemaId">
+                                                    @CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cinema.CinemaName.ToLower())
+                                                </option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => MovieScreen.CinemaId" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <label for="screenname" class="form-label text-black">Screen Name</label>
+                                        <InputSelect @bind-Value="selectedScreen" class="form-control" @oninput="OnScreenChanged">
+                                            <option value="">Select Screen</option>
+                                            @foreach (var screen in Screens)
+                                            {
+                                                <option value="@screen.ScreenId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(screen.ScreenName.ToLower())</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => MovieScreen.ScreenId" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="movieId" class="form-label text-black">Movie</label>
+                                        </div>
+                                        <InputSelect @bind-Value="SelectedMovieId" class="form-control" @oninput="OnMovieChanged">
+                                            <option value="">Select Movie</option>
+                                            @foreach (var movie in Movies)
+                                            {
+                                                <option value="@movie.MovieId">
+                                                    @CultureInfo.CurrentCulture.TextInfo.ToTitleCase(movie.MovieName.ToLower())
+                                                </option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => MovieScreen.MovieId" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="mb-3">
+                                        <label for="starttime" class="form-label text-black">Start Time</label>
+                                        <InputSelect id="starttime" @bind-Value="MovieScreen.StartTime" class="form-control" @onkeydown="CalculateEndTimes">
+                                            <option value="">Select Start Time</option>
+                                            @foreach (var time in AvailableTimes)
+                                            {
+                                                <option value="@time">@time</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => MovieScreen.StartTime" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="mb-3">
+                                        <label for="endtime" class="form-label text-black">End Time</label>
+                                        <InputText id="endtime" @bind-Value="formattedEndTime" class="form-control" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext).RequestToken" />
+                            <div class="mb-3">
+                                <input type="hidden" id="createdby" value="MovieScreen.CreatedBy" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <input type="hidden" id="createddatetime" value="MovieScreen.CreatedDateTime" class="form-control" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </EditForm>
+                    }
+                    <br />
+                    <div>
+                        <a href="/MovieScreen">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int MovieScreenId { get; set; }
+
+    [SupplyParameterFromForm]
+    private MovieScreen? MovieScreen { get; set; }
+
+    private List<Cinema> Cinemas { get; set; } = new();
+    private List<Screen> Screens { get; set; } = new();
+    private List<Movies> Movies { get; set; } = new();
+
+    private int SelectedMovieId { get; set; }
+    private double MovieLength { get; set; }
+
+    private int SelectedCinemaId { get; set; }
+    private string SelectedCinemaName { get; set; } = string.Empty;
+
+    private string SelectedScreenName { get; set; } = string.Empty;
+    private int selectedScreen;
+
+    private List<string> AvailableTimes { get; set; } = new();
+    private List<string> SelectedStartTimes { get; set; } = new();
+    private List<string> SelectedEndTimes { get; set; } = new();
+
+    private string formattedEndTime = "";
+
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+    private string? SId;
+    private string? LoggedInUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        MovieScreen = await context.MovieScreen.FirstOrDefaultAsync(m => m.MovieScreenId == MovieScreenId);
+
+        if (MovieScreen is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        await LoadCinemas();
+        await LoadMovies();
+
+        SelectedCinemaId = MovieScreen.CinemaId;
+        await LoadScreens(SelectedCinemaId);
+
+        selectedScreen = MovieScreen.ScreenId;
+        SelectedMovieId = MovieScreen.MovieId;
+
+        if (MovieScreen.EndTime != default)
+        {
+            formattedEndTime = MovieScreen.EndTime.ToString("HH:mm");
+        }
+        Generate24HourTimeSlots();
+    }
+
+    private async Task LoadCinemas()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Cinemas = await context.Cinema.ToListAsync();
+    }
+
+    private async Task LoadScreens(int cinemaId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        Screens = await context.Screen
+            .Where(s => s.CinemaId == cinemaId)
+            .ToListAsync();
+
+        if (Screens.Any(s => s.ScreenId == MovieScreen.ScreenId))
+        {
+            selectedScreen = MovieScreen.ScreenId;
+        }
+    }
+    private async Task LoadMovies()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Movies = await context.Movies.ToListAsync(); 
+    }
+
+    private async Task OnCinemaChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int cinemaId))
+        {
+            SelectedCinemaId = cinemaId;
+            await LoadScreens(cinemaId); 
+        }
+        else
+        {
+            SelectedCinemaId = 0;
+            Screens.Clear();
+        }
+    }
+
+    private async Task OnScreenChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out var screenId))
+        {
+            MovieScreen.ScreenId = screenId;
+        }
+    }
+
+    private async Task OnMovieChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int movieId))
+        {
+            using var context = DbFactory.CreateDbContext();
+            var selectedMovie = await context.Movies.FirstOrDefaultAsync(m => m.MovieId == movieId);
+
+            if (selectedMovie != null)
+            {
+                SelectedMovieId = selectedMovie.MovieId;
+                MovieLength = selectedMovie.Movielength;
+            }
+            else
+            {
+                MovieLength = 0;
+            }
+        }
+    }
+
+    private void Generate24HourTimeSlots()
+    {
+        AvailableTimes = new List<string>();
+
+        for (int hour = 0; hour < 24; hour++)  // Loop through hours (00 - 23)
+        {
+            for (int minute = 0; minute < 60; minute += 15) // 15-minute intervals
+            {
+                AvailableTimes.Add($"{hour:D2}:{minute:D2}"); // Format as HH:mm
+            }
+        }
+    }
+
+    private async Task CalculateEndTimes(KeyboardEventArgs e)
+    {
+        SelectedEndTimes.Clear();
+
+        if (SelectedMovieId > 0)
+        {
+            using var context = DbFactory.CreateDbContext();
+            var selectedMovie = await context.Movies.FirstOrDefaultAsync(m => m.MovieId == SelectedMovieId);
+
+            if (selectedMovie != null)
+            {
+                MovieLength = selectedMovie.Movielength;
+            }
+            else
+            {
+                MovieLength = 0;
+            }
+        }
+
+        if (MovieLength <= 0 || MovieScreen.StartTime == default)
+            return;
+
+        string selectedStartTime = MovieScreen.StartTime.ToString("HH:mm");
+
+        if (TimeSpan.TryParse(selectedStartTime, out TimeSpan start))
+        {
+            TimeSpan end = start.Add(TimeSpan.FromMinutes(MovieLength + 45)); // Add movie length + buffer
+            formattedEndTime = $"{end.Hours:D2}:{end.Minutes:D2}"; // Store as string for display
+
+            // Convert formattedEndTime back to TimeOnly before saving
+            if (TimeOnly.TryParse(formattedEndTime, out TimeOnly parsedEndTime))
+            {
+                MovieScreen.EndTime = parsedEndTime;
+            }
+        }
+        StateHasChanged(); 
+    }
+
+    private async Task UpdateMovieScreen()
+    {
+        using var context = DbFactory.CreateDbContext();
+                
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingMovieScreen = await context.MovieScreen
+        .AsNoTracking()
+        .FirstOrDefaultAsync(moviescreen => moviescreen.MovieScreenId == MovieScreen.MovieScreenId);
+
+        if (existingMovieScreen == null)
+        {
+            // Handle case where the moviescreen does not exist
+            Console.WriteLine($"MovieScreen with ID {MovieScreen.MovieScreenId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        MovieScreen.CinemaId = SelectedCinemaId;
+        MovieScreen.ScreenId = selectedScreen;
+        MovieScreen.MovieId = SelectedMovieId;
+        MovieScreen.CreatedBy = existingMovieScreen.CreatedBy;
+        MovieScreen.CreatedDateTime = existingMovieScreen.CreatedDateTime;
+        MovieScreen.IsActive = true;
+        MovieScreen.UpdatedBy = LoggedInUser;
+        MovieScreen.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(MovieScreen!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!MovieScreenExists(MovieScreen!.MovieScreenId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/MovieScreen");
+    }
+
+    private bool MovieScreenExists(int moviescreenid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.MovieScreen.Any(e => e.MovieScreenId == moviescreenid);
+    }
+}

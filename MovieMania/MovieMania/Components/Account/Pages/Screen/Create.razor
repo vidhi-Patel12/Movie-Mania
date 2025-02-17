@@ -1,0 +1,234 @@
+﻿@page "/Screen/Create"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using Microsoft.AspNetCore.Antiforgery
+@using System.Text.Json
+@using System.Globalization
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+@inject IdentityRedirectManager RedirectManager
+@inject IConfiguration _configuration
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Screen</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Add Screen</h2>
+                    </div>
+                    <EditForm Model="Screen" OnValidSubmit="FetchAndSaveScreen" FormName="create">
+                        <DataAnnotationsValidator />
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="col-mb-3">
+                                    <label for="screenname" class="form-label text-black">Screen Name</label>
+                                    <InputText id="screenname" @bind-Value="Screen.ScreenName" class="form-control" />
+                                    <ValidationMessage For="() => Screen.ScreenName" class="text-danger" />
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="col-mb-3">
+                                    <div>
+                                        <label for="cinemaId" class="form-label text-black">Cinema</label>
+                                    </div>
+                                    <InputSelect @bind-Value="Screen.CinemaId" class="form-control" @oninput="OnCinemaChanged">
+                                        <option value="" disabled selected>Select Cinema</option>
+                                        @foreach (var cinema in Cinemas)
+                                        {
+                                            <option value="@cinema.CinemaId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cinema.CinemaName.ToLower())</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => Screen.CinemaId" class="text-danger" />
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                         <div class="row">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="totalSeats" class="form-label text-black">TotalSeats</label>
+                                    <InputNumber id="totalSeats" @bind-Value="Screen.TotalSeats" class="form-control" />
+                                    <ValidationMessage For="() => Screen.TotalSeats" class="text-danger" />
+                                </div>
+                            </div>                           
+                        </div>
+                        <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext).RequestToken" />
+                        <div class="row">
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-primary">
+                                    <span>Create</span>
+                                </button>
+                                <div>
+                                    <a href="/Screen">Back to List</a>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
+                    <br />
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Screen" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Screen" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromForm]
+    private Screen Screen { get; set; } = new();
+
+    private List<Cinema> Cinemas { get; set; } = new();
+   
+    private string SelectedCinemaName { get; set; } = string.Empty;
+    private int selectedCinema;
+
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+    private string? SId;
+    private string? LoggedInUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCinemas();
+    }
+
+    private async Task LoadCinemas()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Cinemas = await context.Cinema.ToListAsync();
+    }
+
+    private async Task OnCinemaChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out var cinemaId))
+        {
+            Screen.CinemaId = cinemaId;
+            
+        }
+    }
+
+    private async Task FetchAndSaveScreen()
+    {
+        ErrorMessage = "";
+        SuccessMessage = "";
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+            using var httpClient = new HttpClient();
+
+            SId = _configuration["SId"];
+
+            var existingScreen = await context.Screen
+             .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser)
+                         && EF.Functions.Like(x.ScreenName, Screen.ScreenName)
+                         && x.CinemaId == Screen.CinemaId)
+             .FirstOrDefaultAsync();
+
+            if (existingScreen != null)
+            {
+                ErrorMessage = $"The screen '{Screen.ScreenName}' already exists.";
+                ShowErrorModal = true;
+                return;
+            }
+
+            // Add the new Screen to the database
+            var newScreen = new Screen
+                {
+                    ScreenName = Screen.ScreenName,
+                    CinemaId = Screen.CinemaId,
+                    TotalSeats = Screen.TotalSeats,                    
+                    CreatedBy = LoggedInUser,
+                    CreatedDateTime = DateTime.Now,
+                    UpdatedBy = null,
+                    UpdatedDateTime = null,
+                    IsActive = true
+                };
+            context.Screen.Add(newScreen);
+            await context.SaveChangesAsync();
+
+            SuccessMessage = $"The screen '{Screen.ScreenName}' has been added successfully.";
+            ShowSuccessModal = true;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"An error occurred: {ex.Message}";
+            ShowErrorModal = true;
+        }
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        NavigationManager.NavigateTo("/Screen");
+    }
+}

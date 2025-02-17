@@ -1,4 +1,6 @@
-﻿@if (!string.IsNullOrEmpty(DisplayMessage))
+﻿@inject IHttpContextAccessor HttpContextAccessor
+
+@if (!string.IsNullOrEmpty(DisplayMessage))
 {
     // Determine the message type based on its content
     var isErrorMessage = DisplayMessage.StartsWith("Error");
@@ -26,18 +28,21 @@
     [Parameter]
     public string? Message { get; set; }
 
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+    // [CascadingParameter]
+    // private HttpContext HttpContext { get; set; } = default!;
 
     private string? DisplayMessage => Message ?? messageFromCookie;
 
     protected override void OnInitialized()
     {
-        messageFromCookie = HttpContext.Request.Cookies[IdentityRedirectManager.StatusCookieName];
-
-        if (messageFromCookie is not null)
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext != null)
         {
-            HttpContext.Response.Cookies.Delete(IdentityRedirectManager.StatusCookieName);
+            messageFromCookie = httpContext.Request.Cookies[IdentityRedirectManager.StatusCookieName];
+            if (!string.IsNullOrEmpty(messageFromCookie))
+            {
+                httpContext.Response.Cookies.Delete(IdentityRedirectManager.StatusCookieName);
+            }
         }
     }
 }

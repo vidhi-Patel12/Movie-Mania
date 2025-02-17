@@ -1,0 +1,444 @@
+﻿@page "/Movie/Edit"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using Syncfusion.Blazor
+@using Syncfusion.Blazor.DropDowns
+
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IConfiguration _configuration
+@inject IHttpContextAccessor HttpContextAccessor
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Edit</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.syncfusion.com/blazor/23.1.36/styles/bootstrap5.css" />
+<link href="_content/Syncfusion.Blazor.Themes/bootstrap5.css" rel="stylesheet" />
+
+<script src="_content/Syncfusion.Blazor.Core/scripts/syncfusion-blazor.min.js" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+@if (Movies is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="vh-100" style="margin-top:5%;">
+        <div class="row">
+            <div class="col-2"></div>
+            <div class="col-8">
+                <div class="card shadow">
+                    <div class="card-body" style="background-color: lightgray;">
+                        <div class="row text-black">
+                            <h2>Edit Cinema</h2>
+                        </div>
+                        <EditForm method="post" Model="Movies" OnValidSubmit="UpdateMovies" FormName="edit" Enhance>
+                            <DataAnnotationsValidator />
+                            <input type="hidden" name="Movies.MovieId" value="@Movies.MovieId" />
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3 cover-upload" style=" border: 2px  #4A90E2;border-radius:15px; background-color: #1a1a1a; color: #4A90E2;width:100%;height:95%;">
+                                        @if (!string.IsNullOrEmpty(MovieImagePreview))
+                                        {
+                                            <img src="@MovieImagePreview" alt="Movie Image" class="img-fluid uploaded-image" style=" border: 2px  #4A90E2;border-radius:15px; background-color: #1a1a1a; color: #4A90E2;width:100%;height:100%; cursor: pointer;" onclick="document.getElementById('movieimage').click()" />
+                                        }
+                                        else
+                                        {
+                                            <label for="movieimage" class="upload-box" style="margin-top: 65%;margin-left: 30%;">Upload Image</label>
+                                        }
+                                        <InputFile id="movieimage" OnChange="HandleFileSelected" class="d-none" style="border: 2px  #4A90E2;background-color: #1a1a1a; color: #4A90E2;width:100%;height:95%;" />
+                                        <ValidationMessage For="() => Movies.MovieImage" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="mb-3">
+                                        <label for="moviename" class="form-label">MovieName:</label>
+                                        <InputText id="moviename" @bind-Value="Movies.MovieName" class="form-control" aria-required="true" />
+                                        <ValidationMessage For="() => Movies.MovieName" class="text-danger" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">Description:</label>
+                                        <InputTextArea id="description" @bind-Value="Movies.Description" class="form-control" />
+                                        <ValidationMessage For="() => Movies.Description" class="text-danger" />
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="mb-3">
+                                                <label for="releasedate" class="form-label">ReleaseDate:</label>
+                                                <InputDate id="releasedate" @bind-Value="Movies.ReleaseDate" class="form-control" aria-required="true" />
+                                                <ValidationMessage For="() => Movies.ReleaseDate" class="text-danger" />
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="mb-3">
+                                                <label for="movielength" class="form-label">Movie Length (in minutes):</label>
+                                                <InputNumber id="movielength" @bind-Value="Movies.Movielength" class="form-control" aria-required="true" />
+                                                <ValidationMessage For="() => Movies.Movielength" class="text-danger" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="mb-3">
+                                                <label for="moviecertificate" class="form-label">MovieCertificate:</label>
+                                                <InputSelect id="moviecertificate" Multiple="true" @bind-Value="Movies.MovieCertificate" class="form-select">
+                                                    @foreach (var certificate in Enum.GetValues<MovieCertificate>())
+                                                    {
+                                                        <option value="@certificate">@GetDisplayName(certificate)</option>
+                                                    }
+                                                </InputSelect>
+                                                <ValidationMessage For="() => Movies.MovieCertificate" class="text-danger" />
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="mb-3">
+                                                <label for="cinemaid" class="form-label">Cinema:</label>
+                                                <SfMultiSelect TItem="Cinema" TValue="List<int>" DataSource="@Cinemas" Placeholder="Select Cinema" @bind-Value="SelectedCinemas">
+                                                    <MultiSelectFieldSettings Value="CinemaId" Text="CinemaName" />
+                                                </SfMultiSelect>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="mb-3">
+                                        <label for="genresid" class="form-label">Genres:</label>
+                                        <SfMultiSelect TItem="Genres" TValue="List<int>" DataSource="@Genres" Placeholder="Select Genre" @bind-Value="SelectedGenres">
+                                            <MultiSelectFieldSettings Value="GenresId" Text="GenresName" />
+                                        </SfMultiSelect>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="mb-3">
+                                        <label for="languageid" class="form-label">Language:</label>
+                                        <SfMultiSelect TItem="Languages" TValue="List<int>" DataSource="@Languages" Placeholder="Select Genre" @bind-Value="SelectedLanguages">
+                                            <MultiSelectFieldSettings Value="LanguageId" Text="LanguageName" />
+                                        </SfMultiSelect>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="mb-3">
+                                        <label for="formatid" class="form-label">Format:</label>
+                                        <SfMultiSelect TItem="Formats" TValue="List<int>" DataSource="@Formats" Placeholder="Select Genre" @bind-Value="SelectedFormats">
+                                            <MultiSelectFieldSettings Value="FormatId" Text="FormatName" />
+                                        </SfMultiSelect>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <input type="hidden" id="createdby" value="Movies.CreatedBy" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <input type="hidden" id="createddatetime" value="Movies.CreatedDateTime" class="form-control" />
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                    <div>
+                                        <a href="/Movie">Back to List</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </EditForm>
+                        <br />
+                    </div>
+                    <div class="col-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+}
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Movie" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Movie" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    private int MovieId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Movies? Movies { get; set; }
+
+    public List<MovieCertificate> MovieCertificate { get; set; } = new();
+
+    private List<int> SelectedCinemas { get; set; } = new List<int>();
+    public List<Cinema> Cinemas { get; set; } = new List<Cinema>();
+
+    private List<int> SelectedGenres { get; set; } = new List<int>();
+    private List<Genres> Genres { get; set; } = new List<Genres>();
+
+    private List<int> SelectedLanguages { get; set; } = new List<int>();
+    private List<Languages> Languages { get; set; } = new List<Languages>();
+
+    private List<int> SelectedFormats { get; set; } = new List<int>();
+    private List<Formats> Formats { get; set; } = new List<Formats>();
+
+    private IBrowserFile? MovieImage { get; set; }
+    private string? MovieImagePreview { get; set; }
+
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+
+    private string? SId;
+    private string? LoggedInUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        Cinemas = await context.Cinema.ToListAsync();
+        Genres = await context.Genres.ToListAsync();
+        Languages = await context.Languages.ToListAsync();
+        Formats = await context.Formats.ToListAsync();
+        
+        Movies = await context.Movies
+        .FirstOrDefaultAsync(m => m.MovieId == MovieId);
+
+        if (Movies is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        MovieImagePreview = Movies.MovieImage;
+
+        // Fetch selected Cinemas, Genres, Languages, Formats for the movie
+        SelectedCinemas = await context.MovieCinema
+            .Where(mc => mc.MovieId == MovieId)
+            .Select(mc => mc.CinemaId)
+            .ToListAsync();
+
+        SelectedGenres = await context.MovieGenre
+            .Where(mg => mg.MovieId == MovieId)
+            .Select(mg => mg.GenresId)
+            .ToListAsync();
+
+        SelectedLanguages = await context.MovieLanguage
+            .Where(ml => ml.MovieId == MovieId)
+            .Select(ml => ml.LanguageId)
+            .ToListAsync();
+
+        SelectedFormats = await context.MovieFormat
+            .Where(mf => mf.MovieId == MovieId)
+            .Select(mf => mf.FormatId)
+            .ToListAsync();
+    }
+
+
+    private string GetDisplayName(Enum value)
+    {
+        var field = value.GetType().GetField(value.ToString());
+        var attribute = (DisplayAttribute)field.GetCustomAttributes(typeof(DisplayAttribute), false).FirstOrDefault();
+        return attribute?.Name ?? value.ToString();
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            MovieImage = e.File;
+
+            // Convert to base64 string for preview
+            using var stream = MovieImage.OpenReadStream(5 * 1024 * 1024); // Limit to 5MB
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var imageBytes = memoryStream.ToArray();
+            MovieImagePreview = $"data:{MovieImage.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
+        }
+    }
+
+    private async Task UpdateMovies()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingMovie = await context.Movies
+        .AsNoTracking()
+        .FirstOrDefaultAsync(movie => movie.MovieId == Movies.MovieId);
+
+        if (existingMovie == null)
+        {
+            // Handle case where the Movies does not exist
+            Console.WriteLine($"Movie with ID {Movies.MovieId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        Movies.CreatedBy = existingMovie.CreatedBy;
+        Movies.CreatedDateTime = existingMovie.CreatedDateTime;
+
+        Movies.IsActive = true;
+        Movies.UpdatedBy = LoggedInUser;
+        Movies.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(Movies!).State = EntityState.Modified;
+
+        // Update Movie-Cinema Mapping
+        var existingCinemas = await context.MovieCinema.Where(mc => mc.MovieId == Movies.MovieId).ToListAsync();
+        context.MovieCinema.RemoveRange(existingCinemas);
+        foreach (var cinemaId in SelectedCinemas)
+        {
+            context.MovieCinema.Add(new MovieCinema
+                {
+                    MovieId = Movies.MovieId,
+                    CinemaId = cinemaId,
+                    CreatedBy = LoggedInUser,
+                    CreatedDateTime = DateTime.Now,
+                    IsActive = true,
+                    UpdatedBy = LoggedInUser,
+                    UpdatedDateTime = DateTime.Now
+                });
+        }
+
+        // Update Movie-Genre Mapping
+        var existingGenres = await context.MovieGenre.Where(mg => mg.MovieId == Movies.MovieId).ToListAsync();
+        context.MovieGenre.RemoveRange(existingGenres);
+        foreach (var genreId in SelectedGenres)
+        {
+            context.MovieGenre.Add(new MovieGenre
+                {
+                    MovieId = Movies.MovieId,
+                    GenresId = genreId,
+                    CreatedBy = LoggedInUser,
+                    CreatedDateTime = DateTime.Now,
+                    IsActive = true,
+                    UpdatedBy = LoggedInUser,
+                    UpdatedDateTime = DateTime.Now
+                });
+        }
+
+        // Update Movie-Language Mapping
+        var existingLanguages = await context.MovieLanguage.Where(ml => ml.MovieId == Movies.MovieId).ToListAsync();
+        context.MovieLanguage.RemoveRange(existingLanguages);
+        foreach (var languageId in SelectedLanguages)
+        {
+            context.MovieLanguage.Add(new MovieLanguage
+                {
+                    MovieId = Movies.MovieId,
+                    LanguageId = languageId,
+                    CreatedBy = LoggedInUser,
+                    CreatedDateTime = DateTime.Now,
+                    IsActive = true,
+                    UpdatedBy = LoggedInUser,
+                    UpdatedDateTime = DateTime.Now
+                });
+        }
+
+        // Update Movie-Format Mapping
+        var existingFormats = await context.MovieFormat.Where(mf => mf.MovieId == Movies.MovieId).ToListAsync();
+        context.MovieFormat.RemoveRange(existingFormats);
+        foreach (var formatId in SelectedFormats)
+        {
+            context.MovieFormat.Add(new MovieFormat
+                {
+                    MovieId = Movies.MovieId,
+                    FormatId = formatId,
+                    CreatedBy = LoggedInUser,
+                    CreatedDateTime = DateTime.Now,
+                    IsActive = true,
+                    UpdatedBy = LoggedInUser,
+                    UpdatedDateTime = DateTime.Now
+                });
+        }
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!MoviesExists(Movies!.MovieId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/Movie");
+    }
+
+    private bool MoviesExists(int movieid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Movies.Any(e => e.MovieId == movieid);
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        NavigationManager.NavigateTo("/Movie");
+    }
+}

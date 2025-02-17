@@ -38,7 +38,6 @@
                         </p>
                     </div>
 
-                    <!-- Table with QuickGrid -->
                     <QuickGrid TItem="Formats" Class="table table-striped" Items="@filteredFormats.AsQueryable()" Pagination="@pageDetails">
                         <PropertyColumn Property="formats => formats.FormatName" Title="Formats Name" Sortable="true" />
                         <TemplateColumn Context="formats" Title="Action">
@@ -140,18 +139,18 @@
     string nameFilter = "";
     List<Formats> filteredFormats = new List<Formats>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
 
     private bool showModal = false;
     private int? selectedFormatId;
 
-    private string ErrorMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+     private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
-    private string SuccessMessage { get; set; }
-    private bool ShowSuccessModal { get; set; } = false;
+     private bool ShowSuccessModal { get; set; } = false;
 
-    private string SId;
-    private string LoggedInUser;
+    private string? SId;
+    private string? LoggedInUser;
 
     private void DebouncedHandleSearch(ChangeEventArgs e)
     {
@@ -180,9 +179,7 @@
         {
             SId = _configuration["SId"];
             LoggedInUser = _configuration["LoggedInUserId"];
-
-            //var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
-
+                        
             if (LoggedInUser == SId)
             {
                 filteredFormats = await context.Formats

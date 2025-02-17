@@ -14,7 +14,6 @@
     {
         await HttpContext.SignOutAsync();
         HttpContext.Response.Cookies.Delete("FirstName");
-
         HttpContext.Response.Cookies.Delete("Role");
         HttpContext.Response.Cookies.Delete("PhoneNumber");
         HttpContext.Response.Cookies.Delete("UserId");

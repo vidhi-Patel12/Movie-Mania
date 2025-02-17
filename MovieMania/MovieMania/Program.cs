@@ -6,6 +6,7 @@ using MovieMania.Components;
 using MovieMania.Components.Account;
 using MovieMania.Data;
 using System.Configuration;
+using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,10 +17,12 @@ builder.Services.AddServerSideBlazor()
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 
+builder.Services.AddSyncfusionBlazor();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
+    .AddInteractiveWebAssemblyComponents(); 
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
@@ -57,6 +60,8 @@ var superadminId = builder.Configuration["SId"];
 var loggedinuserid = builder.Configuration["LoggedInUserId"];
 
 var app = builder.Build();
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())

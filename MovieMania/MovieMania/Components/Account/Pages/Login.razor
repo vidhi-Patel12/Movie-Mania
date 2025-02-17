@@ -42,12 +42,12 @@
                         <label for="password" class="form-label text-black">Password</label>
                         <ValidationMessage For="@(() => Input.Password)" class="text-danger" />
                     </div>
-                    <div class="checkbox mb-3">
+                   @*  <div class="checkbox mb-3">
                         <label class="form-label text-white">
                             <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
                             Remember me
                         </label>
-                    </div>
+                    </div> *@
                     <div>
                         <button type="submit" class="w-100 btn btn-lg btn-primary" style="margin-bottom:4%;">Sign in</button>
                     </div>
@@ -129,7 +129,7 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
-    private string SuccessMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
     private bool ShowSuccessModal { get; set; } = false;
 
@@ -158,7 +158,8 @@
                 HttpContext.Response.Cookies.Append("UserId", userId, new CookieOptions
                     {
                         HttpOnly = true,
-                        Expires = DateTimeOffset.UtcNow.AddDays(7),
+                        Expires = null,
+                        SameSite = SameSiteMode.Strict,
                         Secure = true,
                     });
                 Console.WriteLine($"User ID stored in cookie: {userId}");
@@ -174,7 +175,9 @@
                 HttpContext.Response.Cookies.Append("FirstName", firstName ?? string.Empty, new CookieOptions
                     {
                         HttpOnly = true,
-                        Expires = DateTimeOffset.UtcNow.AddDays(7)
+                        Expires = null,
+                        SameSite = SameSiteMode.Strict,
+                        Secure = true,
                     });
                 Console.WriteLine($"First Name stored in cookie: {firstName}");
 
@@ -182,20 +185,22 @@
                 HttpContext.Response.Cookies.Append("PhoneNumber", phoneNumber ?? string.Empty, new CookieOptions
                     {
                         HttpOnly = true,
-                        Expires = DateTimeOffset.UtcNow.AddDays(7)
+                        Expires = null,
+                        SameSite = SameSiteMode.Strict,
+                        Secure = true,
                     });
                 HttpContext.Response.Cookies.Append("Role", role.ToString(), new CookieOptions
                     {
                         HttpOnly = true,
-                        Expires = DateTimeOffset.UtcNow.AddDays(7)
+                        Expires = null,
+                        SameSite = SameSiteMode.Strict,
+                        Secure = true,
                     });
             }
 
             Logger.LogInformation("User logged in.");
             SuccessMessage = $"User logged in.";
-            ShowSuccessModal = true;
-
-            //RedirectManager.RedirectTo(ReturnUrl);
+            ShowSuccessModal = true;                        
         }
         else if (result.RequiresTwoFactor)
         {
@@ -209,8 +214,7 @@
             RedirectManager.RedirectTo("Account/Lockout");
         }
         else
-        {
-            // errorMessage = "Error: Invalid login attempt.";
+        {            
             errorMessage = $"Invalid login attempt.";
             ShowErrorModal = true;
         }

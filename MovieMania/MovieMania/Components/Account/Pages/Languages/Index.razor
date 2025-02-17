@@ -29,8 +29,7 @@
                     </div>
                     <div class="row">
                         <div class="col-6"></div>
-                        <!-- Search Bar -->
-                        <div class="col-4 text-end">
+                                             <div class="col-4 text-end">
                             <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
                         </div>
                         <p class="col-2">
@@ -38,7 +37,6 @@
                         </p>
                     </div>
 
-                    <!-- Table with QuickGrid -->
                     <QuickGrid TItem="Languages" Class="table table-striped" Items="@filteredLanguages.AsQueryable()" Pagination="@pageDetails">
                         <PropertyColumn Property="language => language.LanguageName" Title="Language Name" Sortable="true" />
                         <TemplateColumn Context="language" Title="Action">
@@ -73,8 +71,7 @@
                 <br />
                 <div class="row">
                     <div class="col-4"></div>
-                    <div class="col-5">
-                        @*<a href="/Languages" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>*@
+                    <div class="col-5">                       
                         <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
                         <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
                     </div>
@@ -141,18 +138,17 @@
     string nameFilter = "";
     List<Languages> filteredLanguages = new List<Languages>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
 
     private bool showModal = false;
     private int? selectedLanguageId;
 
-    private string ErrorMessage { get; set; }
-    private bool ShowErrorModal { get; set; } = false;
-    private string SuccessMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;    
     private bool ShowSuccessModal { get; set; } = false;
-
-    private string SId;
-    private string LoggedInUser;
+    private string? SId;
+    private string? LoggedInUser;
 
     private void DebouncedHandleSearch(ChangeEventArgs e)
     {
@@ -181,9 +177,7 @@
         {
             SId = _configuration["SId"];
             LoggedInUser = _configuration["LoggedInUserId"];
-
-            //var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
-
+                        
             if (LoggedInUser == SId)
             {
                 filteredLanguages = await context.Languages
@@ -298,17 +292,14 @@
 
         if (string.IsNullOrEmpty(LoggedInUser))
         {
-            // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
             return;
         }
 
-        // Find the language by ID
         var language = await context.Languages.FirstOrDefaultAsync(lang => lang.LanguageId == languageId);
 
         if (language == null)
         {
-            // Handle case where the language does not exist
             Console.WriteLine($"Language with ID {languageId} not found.");
             return;
         }
@@ -317,7 +308,6 @@
         language.UpdatedBy = LoggedInUser;
         language.UpdatedDateTime = DateTime.Now;
 
-        // Attach the entity and mark it as modified
         context.Attach(language).State = EntityState.Modified;
 
         try
@@ -330,8 +320,7 @@
         catch (DbUpdateConcurrencyException)
         {
             if (!LanguagesExists(language.LanguageId))
-            {
-                // Navigate to not found page if the language does not exist
+            {               
                 NavigationManager.NavigateTo("notfound");
             }
             else
