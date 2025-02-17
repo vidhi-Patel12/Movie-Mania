@@ -105,17 +105,18 @@
     [SupplyParameterFromForm]
     private Country Country { get; set; } = new();
 
-    private string ErrorMessage { get; set; }
-    private string SuccessMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
     private bool ShowSuccessModal { get; set; } = false;
-    private string SId;
+    private string? SId;
+    private string? LoggedInUser;
 
     private async Task FetchAndSaveCountryFromApi()
     {
         ErrorMessage = "";
         SuccessMessage = "";
-        var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
 
         try
         {
@@ -124,7 +125,6 @@
 
             SId = _configuration["SId"];
 
-            // Check if the new country is in the local database
             var existingCountry = await context.Country.Where(X => X.CreatedBy == SId || X.CreatedBy == LoggedInUser)
                 .FirstOrDefaultAsync(l => EF.Functions.Like(l.CountryName, Country.CountryName));
 
@@ -135,12 +135,11 @@
                 return;
             }
 
-            // Add the new country to the database
             var newCountry = new Country
                 {
                     CountryName = Country.CountryName,
-                    CreatedBy = HttpContextAccessor.HttpContext.Request.Cookies["UserId"],
-                    CreatedDateTime = DateTime.Now,
+                    CreatedBy = LoggedInUser,
+                        CreatedDateTime = DateTime.Now,
                     UpdatedBy = null,
                     UpdatedDateTime = null,
                     IsActive = true
@@ -148,7 +147,6 @@
             context.Country.Add(newCountry);
             await context.SaveChangesAsync();
 
-            // Success message
             SuccessMessage = $"The country '{Country.CountryName}' has been added successfully.";
             ShowSuccessModal = true;
         }

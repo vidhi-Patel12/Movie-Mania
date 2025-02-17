@@ -109,13 +109,14 @@
     private string SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
     private bool ShowSuccessModal { get; set; } = false;
-    private string SId;
+    private string? SId;
+    private string? LoggedInUser;
 
     private async Task FetchAndSaveCityFromApi()
     {
         ErrorMessage = "";
         SuccessMessage = "";
-        var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
 
         try
         {
@@ -123,8 +124,7 @@
             using var httpClient = new HttpClient();
 
             SId = _configuration["SId"];
-
-            // Check if the new city is in the local database
+            
             var existingCity = await context.City.Where(X => X.CreatedBy == SId || X.CreatedBy == LoggedInUser)
                 .FirstOrDefaultAsync(l => EF.Functions.Like(l.CityName, City.CityName));
 
@@ -135,11 +135,10 @@
                 return;
             }
 
-            // Add the new city to the database
             var newCity = new City
                 {
                     CityName = City.CityName,
-                    CreatedBy = HttpContextAccessor.HttpContext.Request.Cookies["UserId"],
+                    CreatedBy = LoggedInUser,
                     CreatedDateTime = DateTime.Now,
                     UpdatedBy = null,
                     UpdatedDateTime = null,
@@ -148,7 +147,6 @@
             context.City.Add(newCity);
             await context.SaveChangesAsync();
 
-            // Success message
             SuccessMessage = $"The city '{City.CityName}' has been added successfully.";
             ShowSuccessModal = true;
         }

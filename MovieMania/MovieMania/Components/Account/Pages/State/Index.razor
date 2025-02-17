@@ -73,8 +73,7 @@
                 <br />
                 <div class="row">
                     <div class="col-4"></div>
-                    <div class="col-5">
-                        @*<a href="/State" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>*@
+                    <div class="col-5">                      
                         <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
                         <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
                     </div>
@@ -141,18 +140,17 @@
     string nameFilter = "";
     List<State> filteredState = new List<State>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
 
     private bool showModal = false;
     private int? selectedStateId;
 
-    private string ErrorMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
-    private string SuccessMessage { get; set; }
     private bool ShowSuccessModal { get; set; } = false;
-
-    private string SId;
-    private string LoggedInUser;
+    private string? SId;
+    private string? LoggedInUser;
 
     private void DebouncedHandleSearch(ChangeEventArgs e)
     {
@@ -182,7 +180,7 @@
             SId = _configuration["SId"];
             LoggedInUser = _configuration["LoggedInUserId"];
 
-            if (LoggedInUser == SId)
+           if (LoggedInUser == SId)
             {
                 filteredState = await context.State
                                         .Where(X => X.CreatedBy == SId && X.IsActive == true)
@@ -283,7 +281,6 @@
 
                             string countryName = await context.Country.Where(c => c.CountryId == state.CountryId).Select(c => c.CountryName).FirstOrDefaultAsync();
 
-
                             if (!existingStateNames.Contains(stateName.ToLower()))
                             {
                                 if (countryDictionary.TryGetValue(countryName, out int countryId))
@@ -302,7 +299,6 @@
                                 }
                                 else
                                 {
-                                    // Handle case where country does not exist in the database
                                     Console.WriteLine($"Country '{countryName}' not found in database.");
                                 }
                             }
@@ -351,7 +347,6 @@
     {
         if (selectedStateId != null)
         {
-            // Call your delete logic here
             DeleteState(selectedStateId.Value);
             showModal = false;
         }
@@ -363,17 +358,14 @@
 
         if (string.IsNullOrEmpty(LoggedInUser))
         {
-            // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
             return;
         }
 
-        // Find the state by ID
         var state = await context.State.FirstOrDefaultAsync(lang => lang.StateId == stateId);
 
         if (state == null)
         {
-            // Handle case where the state does not exist
             Console.WriteLine($"State with ID {stateId} not found.");
             return;
         }
@@ -382,7 +374,6 @@
         state.UpdatedBy = LoggedInUser;
         state.UpdatedDateTime = DateTime.Now;
 
-        // Attach the entity and mark it as modified
         context.Attach(state).State = EntityState.Modified;
 
         try

@@ -105,17 +105,18 @@
     [SupplyParameterFromForm]
     private State State { get; set; } = new();
 
-    private string ErrorMessage { get; set; }
-    private string SuccessMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
     private bool ShowSuccessModal { get; set; } = false;
-    private string SId;
+    private string? SId;
+    private string? LoggedInUser;
 
     private async Task FetchAndSaveStateFromApi()
     {
         ErrorMessage = "";
         SuccessMessage = "";
-        var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
 
         try
         {
@@ -124,7 +125,6 @@
 
             SId = _configuration["SId"];
 
-            // Check if the new state is in the local database
             var existingState = await context.State.Where(X => X.CreatedBy == SId || X.CreatedBy == LoggedInUser)
                 .FirstOrDefaultAsync(l => EF.Functions.Like(l.StateName, State.StateName));
 
@@ -148,7 +148,6 @@
             context.State.Add(newState);
             await context.SaveChangesAsync();
 
-            // Success message
             SuccessMessage = $"The state '{State.StateName}' has been added successfully.";
             ShowSuccessModal = true;
         }

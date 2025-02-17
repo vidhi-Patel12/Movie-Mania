@@ -1,0 +1,128 @@
+﻿@page "/Movie/Details"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Movie</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Movie Detail</h2>
+                    </div>
+                    @if (movie is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Movie Name</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(movie.MovieName)</dd>
+                        </dl>
+                        <dl class="row text-black">
+                            <dt class="col-sm-2">ReleaseDate</dt>
+                            <dd class="col-sm-10">@movie.ReleaseDate</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Movie Length (in minutes)</dt>
+                            <dd class="col-sm-10">@movie.Movielength</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">MovieCertificate</dt>
+                            <dd class="col-sm-10">@movie.MovieCertificate</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Movie Image</dt>
+                            <dd class="col-sm-10">@movie.MovieImage</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Description</dt>
+                            <dd class="col-sm-10">@movie.Description</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Cinema</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(cinemaName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Genre</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(genreName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Language</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(languageName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Format</dt>
+                            <dd class="col-sm-10">@CapitalizeFirstLetter(formatName)</dd>
+                        </dl>
+                        <dl class="row  text-black">
+                            <dt class="col-sm-2">Movie Rate</dt>
+                            <dd class="col-sm-10">@movie.MovieRating</dd>
+                        </dl>
+                        <div>
+                            <a href="@($"/Movie/Edit?movieid={movie.MovieId}")">Edit</a> |
+                            <a href="@($"/Movie")">Back to List</a>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-2"></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Movies? movie;
+
+    [SupplyParameterFromQuery]
+    private int MovieId { get; set; }
+
+    private string cinemaName = string.Empty;
+    private string genreName = string.Empty;
+    private string languageName = string.Empty;
+    private string formatName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        movie = await context.Movies.FirstOrDefaultAsync(m => m.MovieId == MovieId);
+
+        var moviedetails = await context.Movies
+            .Where(m => m.MovieId == MovieId)
+            .Select(m => new
+            {
+                MovieName = m.MovieName,
+                Cinemas = string.Join(", ", m.MovieCinemas.Select(mc => mc.Cinema.CinemaName)),
+                Genres = string.Join(", ", m.MovieGenres.Select(mg => mg.Genre.GenresName)),
+                Languages = string.Join(", ", m.MovieLanguages.Select(ml => ml.Language.LanguageName)), 
+                Formats = string.Join(", ", m.MovieFormats.Select(mf => mf.Format.FormatName)) 
+            })
+            .FirstOrDefaultAsync();
+                    
+        cinemaName = moviedetails.Cinemas;
+        genreName = moviedetails.Genres;
+        languageName = moviedetails.Languages;
+        formatName = moviedetails.Formats;
+
+        if (movie is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+    }
+
+    public string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+        return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+}

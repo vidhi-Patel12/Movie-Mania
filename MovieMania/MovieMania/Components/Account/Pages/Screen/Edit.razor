@@ -1,0 +1,187 @@
+﻿@page "/Screen/Edit"
+
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using Microsoft.AspNetCore.Antiforgery;
+@using System.Globalization
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IConfiguration _configuration
+@inject IAntiforgery Antiforgery
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Screen</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Screen</h2>
+                    </div>
+                    @if (Screen is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <EditForm method="post" Model="Screen" OnValidSubmit="UpdateScreen" FormName="Edit" Enhance>
+                            <DataAnnotationsValidator />
+                            <input type="hidden" name="Screen.ScreenId" value="@Screen.ScreenId" />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <label for="screenname" class="form-label text-black">Screen Name</label>
+                                        <InputText id="screenname" @bind-Value="Screen.ScreenName" class="form-control" />
+                                        <ValidationMessage For="() => Screen.ScreenName" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="cinemaId" class="form-label text-black">Cinema</label>
+                                        </div>
+                                        <InputSelect @bind-Value="Screen.CinemaId" class="form-control" @oninput="OnCinemaChanged">
+                                            <option value="" disabled selected>Select Cinema</option>
+                                            @foreach (var cinema in Cinemas)
+                                            {
+                                                <option value="@cinema.CinemaId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cinema.CinemaName.ToLower())</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => Screen.CinemaId" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label for="totalSeats" class="form-label text-black">TotalSeats</label>
+                                        <InputNumber id="totalSeats" @bind-Value="Screen.TotalSeats" class="form-control" />
+                                        <ValidationMessage For="() => Screen.TotalSeats" class="text-danger" />
+                                    </div>
+                                </div>
+
+                            </div>
+                            <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext).RequestToken" />
+                            <div class="mb-3">
+                                <input type="hidden" id="createdby" value="Screen.CreatedBy" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <input type="hidden" id="createddatetime" value="Screen.CreatedDateTime" class="form-control" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </EditForm>
+                    }
+                    <br />
+                    <div>
+                        <a href="/Screen">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int ScreenId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Screen? Screen { get; set; }
+
+    private string? LoggedInUser;
+
+    private List<Cinema> Cinemas { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Screen = await context.Screen.FirstOrDefaultAsync(m => m.ScreenId == ScreenId);
+
+        if (Screen is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+        await LoadCinemas();
+    }
+
+    private async Task LoadCinemas()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Cinemas = await context.Cinema.ToListAsync();
+    }
+
+    private async Task OnCinemaChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out var cinemaId))
+        {
+            Screen.CinemaId = cinemaId;
+        }
+    }
+
+    private async Task UpdateScreen()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingScreen = await context.Screen
+        .AsNoTracking()
+        .FirstOrDefaultAsync(screen => screen.ScreenId == Screen.ScreenId);
+
+        if (existingScreen == null)
+        {          
+            Console.WriteLine($"Screen with ID {Screen.ScreenId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+               
+        Screen.CreatedBy = existingScreen.CreatedBy;
+        Screen.CreatedDateTime = existingScreen.CreatedDateTime;
+
+        // Set the necessary properties for update
+        Screen.IsActive = true;
+        Screen.UpdatedBy = LoggedInUser;
+        Screen.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(Screen!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ScreenExists(Screen!.ScreenId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Screen");
+    }
+
+    private bool ScreenExists(int screenid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Screen.Any(e => e.ScreenId == screenid);
+    }
+}

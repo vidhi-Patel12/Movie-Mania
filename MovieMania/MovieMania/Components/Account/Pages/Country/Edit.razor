@@ -4,6 +4,7 @@
 @inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject IAntiforgery Antiforgery
+@inject IConfiguration _configuration
 
 @using Microsoft.AspNetCore.Antiforgery;
 <PageTitle>Country</PageTitle>
@@ -63,6 +64,8 @@
     [SupplyParameterFromForm]
     private Country? Country { get; set; }
 
+    private string? LoggedInUser;
+
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
@@ -81,10 +84,9 @@
     {
         using var context = DbFactory.CreateDbContext();
 
-        // Retrieve the UserId from the cookies
-        var userId = HttpContext.Request.Cookies["UserId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
 
-        if (string.IsNullOrEmpty(userId))
+        if (string.IsNullOrEmpty(LoggedInUser))
         {
             // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
@@ -109,7 +111,7 @@
 
         // Set the necessary properties for update
         Country.IsActive = true;
-        Country.UpdatedBy = userId;
+        Country.UpdatedBy = LoggedInUser;
         Country.UpdatedDateTime = DateTime.Now;
 
         context.Attach(Country!).State = EntityState.Modified;

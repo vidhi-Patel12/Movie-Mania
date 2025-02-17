@@ -1,0 +1,346 @@
+﻿@page "/Cinema"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MovieMania.Models
+@using MovieMania.Data
+@using System.Text.Json
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject IConfiguration _configuration
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>Cinema</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Cinema</h2>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"></div>
+                        <!-- Search Bar -->
+                        <div class="col-4 text-end">
+                            <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
+                        </div>
+                        <p class="col-2">
+                            <a class="btn btn-primary" href="Cinema/Create">Create New</a>
+                        </p>
+                    </div>
+
+                    <!-- Table with QuickGrid -->
+                    <QuickGrid TItem="Cinema" Class="table table-striped" Items="@filteredCinema.AsQueryable()" Pagination="@pageDetails">
+                      
+                        <TemplateColumn Context="cinema" Title="Cinema Name">
+                            <p>@CapitalizeFirstLetter(cinema.CinemaName)</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="cinema" Title="Country">
+                            <p>@CapitalizeFirstLetter(GetCountryName(cinema.CountryId))</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="cinema" Title="State">
+                            <p>@CapitalizeFirstLetter(GetStateName(cinema.StateId))</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="cinema" Title="City">
+                            <p>@CapitalizeFirstLetter(GetCityName(cinema.CityId))</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="cinema" Title="Address">
+                            <p>@CapitalizeFirstLetter(cinema.Address)</p>
+                        </TemplateColumn>                             
+
+                        <TemplateColumn Context="cinema" Title="Action">
+                            <a href="@($"cinema/details?cinemaid={cinema.CinemaId}")"><i class="bi bi-eye-fill" style="color:#29b474"></i></a> &nbsp;
+                            @if (cinema.CreatedBy == LoggedInUser)
+                            {
+                                <a href="@($"cinema/edit?cinemaid={cinema.CinemaId}")"><i class="bi bi-pencil-fill" style="color:#2f80ed"></i></a>
+                                <span>&nbsp;</span>
+                                <a href="/Cinema" @onclick="() => OpenDeleteModal(cinema.CinemaId)">
+                                    <i class="bi bi-trash-fill" style="color:#eb5757"></i>
+                                </a>
+                            }
+                        </TemplateColumn>
+                    </QuickGrid>
+                    <Paginator State="@pageDetails" />
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Cinema Delete</h5>
+                <br />
+                <p class="text-md-center">Are you sure you want to permanently delete this cinema?</p>
+                <br />
+                <div class="row">
+                    <div class="col-4"></div>
+                    <div class="col-5">
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
+                        <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Cinema" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Cinema" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    string nameFilter = "";
+    List<Cinema> filteredCinema = new List<Cinema>();
+    PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
+    private System.Timers.Timer? debounceTimer;
+
+    private bool showModal = false;
+    private int? selectedCinemaId;
+
+    private string? ErrorMessage { get; set; }    
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+
+    private string? SId;
+    private string? LoggedInUser;
+
+    private Dictionary<int, string> countryLookup = new();
+    private Dictionary<int, string> stateLookup = new();
+    private Dictionary<int, string> cityLookup = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HandleSearch();
+        await LoadLookups();
+    }
+
+    private void DebouncedHandleSearch(ChangeEventArgs e)
+    {
+        nameFilter = e.Value?.ToString();
+
+        // Reset the timer
+        debounceTimer?.Stop();
+        debounceTimer = new System.Timers.Timer(100); // 100ms debounce
+        debounceTimer.Elapsed += async (_, _) => await InvokeAsync(HandleSearch);
+        debounceTimer.Start();
+    }
+
+    private async Task HandleSearch()
+    {
+        debounceTimer?.Stop();
+        var context = DbFactory.CreateDbContext();
+        if (!string.IsNullOrWhiteSpace(nameFilter))
+        {
+            filteredCinema = await context.Cinema
+                                        .Where(x => EF.Functions.Like(
+                                            EF.Functions.Collate(x.CinemaName, "SQL_Latin1_General_CP1_CI_AS"),
+                                            $"%{nameFilter}%"))
+                                        .ToListAsync();
+        }
+        else
+        {
+            SId = _configuration["SId"];
+            LoggedInUser = _configuration["LoggedInUserId"];
+
+            if (LoggedInUser == SId)
+            {
+                filteredCinema = await context.Cinema
+                                        .Where(X => X.CreatedBy == SId && X.IsActive == true)
+                                        .OrderByDescending(x => x.CinemaId)
+                                        .ToListAsync();
+            }
+            else
+            {
+                filteredCinema = await context.Cinema
+                     .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser) && x.IsActive == true)
+                    .OrderByDescending(x => x.CinemaId)
+                    .ToListAsync();
+            }
+        }
+    }
+
+    private async Task LoadLookups()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var countries = await context.Country.ToListAsync(); // Fix: Use ToListAsync()
+        countryLookup = countries.ToDictionary(c => c.CountryId, c => c.CountryName);
+
+        var states = await context.State.ToListAsync();
+        stateLookup = states.ToDictionary(s => s.StateId, s => s.StateName);
+
+        var cities = await context.City.ToListAsync();
+        cityLookup = cities.ToDictionary(ci => ci.CityId, ci => ci.CityName);
+    }
+
+    private string GetCountryName(int countryId)
+    {
+        return countryLookup.TryGetValue(countryId, out var name) ? name : "Unknown";
+    }
+
+    private string GetStateName(int stateId)
+    {
+        return stateLookup.TryGetValue(stateId, out var name) ? name : "Unknown";
+    }
+
+    private string GetCityName(int cityId)
+    {
+        return cityLookup.TryGetValue(cityId, out var name) ? name : "Unknown";
+    }
+
+    public string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+        return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+
+    private void OpenDeleteModal(int cinemaId)
+    {
+        selectedCinemaId = cinemaId;
+        showModal = true;
+    }
+
+    private void ConfirmDelete()
+    {
+        if (selectedCinemaId != null)
+        {            
+            DeleteCinema(selectedCinemaId.Value);
+            showModal = false;
+        }
+    }
+
+    private async Task DeleteCinema(int cinemaId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var cinema = await context.Cinema.FirstOrDefaultAsync(cinema => cinema.CinemaId == cinemaId);
+
+        if (cinema == null)
+        {
+            Console.WriteLine($"Cinema with ID {cinemaId} not found.");
+            return;
+        }
+
+        cinema.IsActive = false;
+        cinema.UpdatedBy = LoggedInUser;
+        cinema.UpdatedDateTime = DateTime.Now;
+                
+        context.Attach(cinema).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+            showModal = false;
+            await HandleSearch();
+            StateHasChanged();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CinemaExists(cinema.CinemaId))
+            {               
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Cinema");
+    }
+
+    private bool CinemaExists(int cinemaId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Cinema.Any(e => e.CinemaId == cinemaId);
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        StateHasChanged();
+    }
+}

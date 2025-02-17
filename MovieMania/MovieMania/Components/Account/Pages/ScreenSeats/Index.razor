@@ -1,0 +1,352 @@
+﻿@page "/ScreenSeats"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MovieMania.Models
+@using MovieMania.Data
+@using System.Text.Json
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject IConfiguration _configuration
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>ScreenSeats</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Screen Seats</h2>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"></div>
+                        <div class="col-4 text-end">
+                            <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
+                        </div>
+                        <p class="col-2">
+                            <a class="btn btn-primary" href="ScreenSeats/Create">Create New</a>
+                        </p>
+                    </div>
+
+                    <QuickGrid TItem="ScreenSeats" Class="table table-striped" Items="@filteredScreenSeats.AsQueryable()" Pagination="@pageDetails">
+
+                        <TemplateColumn Context="screenseats" Title="Cinema">
+                            <p>@GetCinemaName(screenseats.ScreenId)</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="screenseats" Title="Screen">
+                            <p>@CapitalizeFirstLetter(GetScreenName(screenseats.ScreenId))</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="screenseats" Title="Seat Type">
+                            <p>@CapitalizeFirstLetter(GetSeatTypeName(screenseats.SeatTypeId))</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="screenseats" Title="Total Seats">
+                            <p>@screenseats.TotalSeats</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="screenseats" Title="Action">
+                            <a href="@($"ScreenSeats/Details?screenseatid={screenseats.ScreenSeatId}")"><i class="bi bi-eye-fill" style="color:#29b474"></i></a> &nbsp;
+                            @if (screenseats.CreatedBy == LoggedInUser)
+                            {
+                                <a href="@($"ScreenSeats/Edit?screenseatid={screenseats.ScreenSeatId}")"><i class="bi bi-pencil-fill" style="color:#2f80ed"></i></a>
+                                <span>&nbsp;</span>
+                                <a href="/ScreenSeats" @onclick="() => OpenDeleteModal(screenseats.ScreenSeatId)">
+                                    <i class="bi bi-trash-fill" style="color:#eb5757"></i>
+                                </a>
+                            }
+                        </TemplateColumn>
+                    </QuickGrid>
+                    <Paginator State="@pageDetails" />
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">ScreenSeats Delete</h5>
+                <br />
+                <p class="text-md-center">Are you sure you want to permanently delete this screenseats?</p>
+                <br />
+                <div class="row">
+                    <div class="col-4"></div>
+                    <div class="col-5">
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
+                        <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/ScreenSeats" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/ScreenSeats" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    string nameFilter = "";
+    List<ScreenSeats> filteredScreenSeats = new List<ScreenSeats>();
+    PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
+    private System.Timers.Timer? debounceTimer;
+
+    private bool showModal = false;
+    private int? selectedScreenSeatId;
+
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+
+    private string? SId;
+    private string? LoggedInUser;
+
+    private Dictionary<int, string> screenCinemaLookup = new();
+
+    private Dictionary<int, string> screenLookup = new();
+
+    private Dictionary<int, string> seattypeLookup = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HandleSearch();
+        await LoadLookups();
+    }
+
+    private void DebouncedHandleSearch(ChangeEventArgs e)
+    {
+        nameFilter = e.Value?.ToString();
+
+        // Reset the timer
+        debounceTimer?.Stop();
+        debounceTimer = new System.Timers.Timer(100); // 100ms debounce
+        debounceTimer.Elapsed += async (_, _) => await InvokeAsync(HandleSearch);
+        debounceTimer.Start();
+    }
+
+    private async Task HandleSearch()
+    {
+        debounceTimer?.Stop();
+        var context = DbFactory.CreateDbContext();
+        if (!string.IsNullOrWhiteSpace(nameFilter))
+        {
+            filteredScreenSeats = await context.ScreenSeats
+                                        // .Where(x => EF.Functions.Like(
+                                        //     EF.Functions.Collate(x.ScreenSeatName, "SQL_Latin1_General_CP1_CI_AS"),
+                                        //     $"%{nameFilter}%"))
+                                        .ToListAsync();
+        }
+        else
+        {
+            SId = _configuration["SId"];
+            LoggedInUser = _configuration["LoggedInUserId"];
+
+            if (LoggedInUser == SId)
+            {
+                filteredScreenSeats = await context.ScreenSeats
+                                        .Where(X => X.CreatedBy == SId && X.IsActive == true)
+                                        .OrderByDescending(x => x.ScreenSeatId)
+                                        .ToListAsync();
+            }
+            else
+            {
+                filteredScreenSeats = await context.ScreenSeats
+                     .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser) && x.IsActive == true)
+                    .OrderByDescending(x => x.ScreenSeatId)
+                    .ToListAsync();
+            }
+        }
+    }
+
+    private async Task LoadLookups()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var cinemaNames = await (from ss in context.ScreenSeats
+                                 join s in context.Screen on ss.ScreenId equals s.ScreenId
+                                 join c in context.Cinema on s.CinemaId equals c.CinemaId
+                                 select new { ss.ScreenId, c.CinemaName })
+                         .Distinct()
+                         .ToListAsync();
+
+        // Convert to dictionary (ScreenId → CinemaName)
+        screenCinemaLookup = cinemaNames.ToDictionary(sc => sc.ScreenId, sc => sc.CinemaName);
+
+
+        var screens = await context.Screen.ToListAsync(); // Fix: Use ToListAsync()
+        screenLookup = screens.ToDictionary(c => c.ScreenId, c => c.ScreenName);
+
+        var seattypes = await context.SeatType.ToListAsync(); // Fix: Use ToListAsync()
+        seattypeLookup = seattypes.ToDictionary(c => c.SeatTypeId, c => c.SeatTypeName);
+
+    }
+
+    private string GetCinemaName(int screenId)
+    {
+        return screenCinemaLookup.TryGetValue(screenId, out var name) ? name : "Unknown";
+    }
+
+    private string GetScreenName(int screenId)
+    {
+        return screenLookup.TryGetValue(screenId, out var name) ? name : "Unknown";
+    }
+    private string GetSeatTypeName(int seattypeId)
+    {
+        return seattypeLookup.TryGetValue(seattypeId, out var name) ? name : "Unknown";
+    }
+
+    public string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+
+    private void OpenDeleteModal(int screenseatId)
+    {
+        selectedScreenSeatId = screenseatId;
+        showModal = true;
+    }
+
+    private void ConfirmDelete()
+    {
+        if (selectedScreenSeatId != null)
+        {
+            DeleteScreenSeats(selectedScreenSeatId.Value);
+            showModal = false;
+        }
+    }
+
+    private async Task DeleteScreenSeats(int screenseatId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            // Handle case where UserId cookie is not present
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var screenseats = await context.ScreenSeats.FirstOrDefaultAsync(screenseats => screenseats.ScreenSeatId == screenseatId);
+
+        if (screenseats == null)
+        {
+            // Handle case where the ScreenSeats does not exist
+            Console.WriteLine($"ScreenSeats with ID {screenseatId} not found.");
+            return;
+        }
+
+        screenseats.IsActive = false;
+        screenseats.UpdatedBy = LoggedInUser;
+        screenseats.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(screenseats).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+            showModal = false;
+            await HandleSearch();
+            StateHasChanged();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ScreenSeatsExists(screenseats.ScreenSeatId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/ScreenSeats");
+    }
+
+    private bool ScreenSeatsExists(int screenseatId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.ScreenSeats.Any(e => e.ScreenSeatId == screenseatId);
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        StateHasChanged();
+    }
+}

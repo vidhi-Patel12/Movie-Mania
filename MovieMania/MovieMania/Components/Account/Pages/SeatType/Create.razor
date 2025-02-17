@@ -1,0 +1,172 @@
+﻿@page "/SeatType/Create"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using Microsoft.AspNetCore.Antiforgery
+@using System.Text.Json
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+@inject IdentityRedirectManager RedirectManager
+@inject IConfiguration _configuration
+
+<PageTitle>SeatType</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Add Seat Type</h2>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <EditForm Model="SeatType" OnValidSubmit="FetchAndSaveSeatType" FormName="create">
+                                <DataAnnotationsValidator />
+                                <div class="mb-3">
+                                    <label for="seatTypename" class="form-label text-black">Seat Type Name:</label>
+                                    <InputText id="seatTypename" @bind-Value="SeatType.SeatTypeName" class="form-control" />
+                                    <ValidationMessage For="() => SeatType.SeatTypeName" class="text-danger" />
+                                </div>
+                                <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext).RequestToken" />
+                                <button type="submit" class="btn btn-primary">
+                                    <span>Create</span>
+                                </button>
+                            </EditForm>
+                        </div>
+                    </div>
+                    <br />
+                    <div>
+                        <a href="/SeatType">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/SeatType" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/SeatType" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromForm]
+    private SeatType SeatType { get; set; } = new();
+
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+    private string? SId;
+    private string? LoggedInUser;
+
+    private async Task FetchAndSaveSeatType()
+    {
+        ErrorMessage = "";
+        SuccessMessage = "";
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+            using var httpClient = new HttpClient();
+
+            SId = _configuration["SId"];
+
+            // Check if the new SeatType is in the local database
+            var existingSeatType = await context.SeatType.Where(X => X.CreatedBy == SId || X.CreatedBy == LoggedInUser)
+                .FirstOrDefaultAsync(l => EF.Functions.Like(l.SeatTypeName, SeatType.SeatTypeName));
+
+            if (existingSeatType != null)
+            {
+                ErrorMessage = $"The seatType '{SeatType.SeatTypeName}' already exists.";
+                ShowErrorModal = true;
+                return;
+            }
+
+            // Add the new SeatType to the database
+            var newSeatType = new SeatType
+                {
+                    SeatTypeName = SeatType.SeatTypeName,
+                    CreatedBy = HttpContextAccessor.HttpContext.Request.Cookies["UserId"],
+                    CreatedDateTime = DateTime.Now,
+                    UpdatedBy = null,
+                    UpdatedDateTime = null,
+                    IsActive = true
+                };
+            context.SeatType.Add(newSeatType);
+            await context.SaveChangesAsync();
+
+            SuccessMessage = $"The seatType '{SeatType.SeatTypeName}' has been added successfully.";
+            ShowSuccessModal = true;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"An error occurred: {ex.Message}";
+            ShowErrorModal = true;
+        }
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        StateHasChanged();
+    }
+}

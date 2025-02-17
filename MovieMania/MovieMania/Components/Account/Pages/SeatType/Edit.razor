@@ -1,0 +1,136 @@
+﻿@page "/SeatType/Edit"
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+@inject IConfiguration _configuration
+
+@using Microsoft.AspNetCore.Antiforgery;
+<PageTitle>SeatType</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Seat Type</h2>
+                    </div>
+                    @if (SeatType is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-4">
+                                <EditForm method="post" Model="SeatType" OnValidSubmit="UpdateSeatType" FormName="Edit" Enhance>
+                                    <DataAnnotationsValidator />
+                                    <input type="hidden" name="SeatType.SeatTypeId" value="@SeatType.SeatTypeId" />
+                                    <div class="mb-3">
+                                        <label for="seatTypename" class="form-label text-black">Seat Type Name:</label>
+                                        <InputText id="seatTypename" @bind-Value="SeatType.SeatTypeName" class="form-control" />
+                                        <ValidationMessage For="() => SeatType.SeatTypeName" class="text-danger" />
+                                    </div>
+                                    <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createdby" value="SeatType.CreatedBy" class="form-control" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <input type="hidden" id="createddatetime" value="SeatType.CreatedDateTime" class="form-control" />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </EditForm>
+                            </div>
+                        </div>
+                    }
+                    <br />
+                    <div>
+                        <a href="/SeatType">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int SeatTypeId { get; set; }
+
+    [SupplyParameterFromForm]
+    private SeatType? SeatType { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private string? LoggedInUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        SeatType ??= await context.SeatType.FirstOrDefaultAsync(m => m.SeatTypeId == SeatTypeId);
+
+        if (SeatType is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateSeatType()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        LoggedInUser = _configuration["LoggedInUserId"];
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingGenre = await context.SeatType
+        .AsNoTracking()
+        .FirstOrDefaultAsync(seatType => seatType.SeatTypeId == SeatType.SeatTypeId);
+
+        if (existingGenre == null)
+        {
+            Console.WriteLine($"Genre with ID {SeatType.SeatTypeId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        SeatType.CreatedBy = existingGenre.CreatedBy;
+        SeatType.CreatedDateTime = existingGenre.CreatedDateTime;
+        SeatType.IsActive = true;
+        SeatType.UpdatedBy = LoggedInUser;
+        SeatType.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(SeatType!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!SeatTypeExists(SeatType!.SeatTypeId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/SeatType");
+    }
+
+    private bool SeatTypeExists(int seatTypeid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.SeatType.Any(e => e.SeatTypeId == seatTypeid);
+    }
+}

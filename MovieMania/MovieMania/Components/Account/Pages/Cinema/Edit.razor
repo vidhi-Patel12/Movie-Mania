@@ -1,0 +1,260 @@
+﻿@page "/cinema/edit"
+
+@using Microsoft.EntityFrameworkCore
+@using MovieMania.Models
+@using Microsoft.AspNetCore.Antiforgery;
+@using System.Globalization
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+@inject IConfiguration _configuration
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Cinema</PageTitle>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Edit Cinema</h2>
+                    </div>
+                    @if (Cinema is null)
+                    {
+                        <p><em>No Data Available...</em></p>
+                    }
+                    else
+                    {
+                        <EditForm method="post" Model="Cinema" OnValidSubmit="UpdateCinema" FormName="Edit" Enhance>
+                            <DataAnnotationsValidator />
+                            <input type="hidden" name="Cinema.CinemaId" value="@Cinema.CinemaId" />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <label for="cinemaname" class="form-label text-black">Cinema Name</label>
+                                        <InputText id="cinemaname" @bind-Value="Cinema.CinemaName" class="form-control" />
+                                        <ValidationMessage For="() => Cinema.CinemaName" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="countryid" class="form-label text-black">Country</label>
+                                        </div>
+                                        <InputSelect @bind-Value="Cinema.CountryId" class="form-control" @oninput="OnCountryChanged">
+                                            <option value="" disabled selected>Select Country</option>
+                                            @foreach (var country in Countries)
+                                            {
+                                                <option value="@country.CountryId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(country.CountryName.ToLower())</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => Cinema.CountryId" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="stateid" class="form-label text-black">State</label>
+                                        </div>
+                                        <InputSelect id="state" @bind-Value="Cinema.StateId" class="form-control" @oninput="OnStateChanged">
+                                            <option value="" disabled selected>Select State</option>
+                                            @foreach (var state in States)
+                                            {
+                                                <option value="@state.StateId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(state.StateName.ToLower())</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => Cinema.StateId" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="col-mb-3">
+                                        <div>
+                                            <label for="cityid" class="form-label text-black">City</label>
+                                        </div>
+                                        <InputSelect id="city" @bind-Value="Cinema.CityId" class="form-control">
+                                            <option value="" disabled selected>Select City</option>
+                                            @foreach (var city in Cities)
+                                            {
+                                                <option value="@city.CityId">@CultureInfo.CurrentCulture.TextInfo.ToTitleCase(city.CityName.ToLower())</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => Cinema.CityId" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label for="address" class="form-label text-black">Address</label>
+                                        <InputTextArea id="address" @bind-Value="Cinema.Address" class="form-control" />
+                                        <ValidationMessage For="() => Cinema.Address" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label for="pincode" class="form-label text-black">Pincode</label>
+                                        <InputNumber id="pincode" @bind-Value="Cinema.Pincode" class="form-control" />
+                                        <ValidationMessage For="() => Cinema.Pincode" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext).RequestToken" />
+                            <div class="mb-3">
+                                <input type="hidden" id="createdby" value="Cinema.CreatedBy" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <input type="hidden" id="createddatetime" value="Cinema.CreatedDateTime" class="form-control" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </EditForm>
+                    }
+                    <br />
+                    <div>
+                        <a href="/Cinema">Back to List</a>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int CinemaId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Cinema? Cinema { get; set; }
+
+    private string? LoggedInUser;
+
+    private List<Country> Countries { get; set; } = new();
+    private List<State> States { get; set; } = new();
+    private List<City> Cities { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Cinema = await context.Cinema.FirstOrDefaultAsync(m => m.CinemaId == CinemaId);
+
+        if (Cinema is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        await LoadCountries(); 
+        if (Cinema.CountryId > 0) await LoadStates(Cinema.CountryId);
+        if (Cinema.StateId > 0) await LoadCities(Cinema.StateId);
+    }
+
+    private async Task LoadCountries()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Countries = await context.Country.ToListAsync();
+    }
+
+    private async Task OnCountryChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out var countryId))
+        {
+            Cinema.CountryId = countryId;
+            Cinema.StateId = 0; 
+            Cinema.CityId = 0;  
+            States.Clear();
+            Cities.Clear();
+
+            await LoadStates(countryId); 
+        }
+    }
+
+    private async Task LoadStates(int countryId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        States = await context.State.Where(s => s.CountryId == countryId).ToListAsync();  
+        StateHasChanged();
+    }
+
+    private async Task OnStateChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out var stateId))
+        {
+            Cinema.StateId = stateId;
+            Cinema.CityId = 0;  // Reset City when State changes
+            Cities.Clear();
+            await LoadCities(stateId); // Load cities based on the selected state
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCities(int stateId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        Cities = await context.City.Where(c => c.StateId == stateId).ToListAsync();
+        StateHasChanged();
+    }
+
+    private async Task UpdateCinema()
+    {
+        using var context = DbFactory.CreateDbContext();
+        LoggedInUser = _configuration["LoggedInUserId"];
+               
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {            
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        var existingCinema = await context.Cinema
+        .AsNoTracking()
+        .FirstOrDefaultAsync(cinema => cinema.CinemaId == Cinema.CinemaId);
+
+        if (existingCinema == null)
+        {
+            // Handle case where the cinema does not exist
+            Console.WriteLine($"Cinema with ID {Cinema.CinemaId} not found.");
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        Cinema.CreatedBy = existingCinema.CreatedBy;
+        Cinema.CreatedDateTime = existingCinema.CreatedDateTime;
+
+        Cinema.IsActive = true;
+        Cinema.UpdatedBy = LoggedInUser;
+        Cinema.UpdatedDateTime = DateTime.Now;
+
+        context.Attach(Cinema!).State = EntityState.Modified;
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CinemaExists(Cinema!.CinemaId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Cinema");
+    }
+
+    private bool CinemaExists(int cinemaid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Cinema.Any(e => e.CinemaId == cinemaid);
+    }
+}

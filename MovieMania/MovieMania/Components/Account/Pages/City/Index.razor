@@ -141,18 +141,18 @@
     string nameFilter = "";
     List<City> filteredCity = new List<City>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
 
     private bool showModal = false;
     private int? selectedCityId;
 
-    private string ErrorMessage { get; set; }
+    private string? ErrorMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
-    private string SuccessMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowSuccessModal { get; set; } = false;
 
-    private string SId;
-    private string LoggedInUser;
+    private string? SId;
+    private string? LoggedInUser;
 
     private void DebouncedHandleSearch(ChangeEventArgs e)
     {
@@ -188,21 +188,19 @@
                                         .Where(X => X.CreatedBy == SId && X.IsActive == true)
                                         .OrderByDescending(x => x.CityId)
                                         .ToListAsync();
-                // If filteredCity is still empty (no data in the database), fetch from the API
+
                 if (!filteredCity.Any())
                 {
                     using var httpClient = new HttpClient();
 
-                    // Fetch data from API
                     var response = await httpClient.GetAsync("https://countriesnow.space/api/v0.1/countries");
                     response.EnsureSuccessStatusCode();
-
-                    // Read response as string
+                                       
                     var jsonString = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine(jsonString); // Debugging log
+                    Console.WriteLine(jsonString); 
 
                     List<State> apiState = new();
-                    List<City> apiCities = new();  // For storing cities
+                    List<City> apiCities = new();  
 
                     using (var doc = JsonDocument.Parse(jsonString))
                     {
@@ -261,29 +259,24 @@
                         }
                         else
                         {
-                            // Handle error if the data format is incorrect
                             ErrorMessage = "Invalid data.";
                             ShowErrorModal = true;
                             return;
                         }
                     }
 
-                    // Insert new cities
                     if (apiCities.Any())
                     {
                         await context.City.AddRangeAsync(apiCities);
                         await context.SaveChangesAsync();
                     }
 
-                    // Refresh filtered cities
                     filteredCity = await context.City
                         .Where(x => x.CreatedBy == SId && x.IsActive == true)
                         .OrderByDescending(x => x.CityId)
                         .ToListAsync();
                 }
-
             }
-
             else
             {
                 filteredCity = await context.City
@@ -301,7 +294,6 @@
 
     private void OpenDeleteModal(int cityId)
     {
-        // Set the selected state ID and open the modal
         selectedCityId = cityId;
         showModal = true;
     }
@@ -310,7 +302,6 @@
     {
         if (selectedCityId != null)
         {
-            // Call your delete logic here
             DeleteCity(selectedCityId.Value);
             showModal = false;
         }
@@ -322,17 +313,14 @@
 
         if (string.IsNullOrEmpty(LoggedInUser))
         {
-            // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
             return;
         }
 
-        // Find the city by ID
         var city = await context.City.FirstOrDefaultAsync(lang => lang.CityId == cityId);
 
         if (city == null)
         {
-            // Handle case where the city does not exist
             Console.WriteLine($"City with ID {cityId} not found.");
             return;
         }
@@ -341,7 +329,6 @@
         city.UpdatedBy = LoggedInUser;
         city.UpdatedDateTime = DateTime.Now;
 
-        // Attach the entity and mark it as modified
         context.Attach(city).State = EntityState.Modified;
 
         try

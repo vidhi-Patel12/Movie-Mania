@@ -1,0 +1,321 @@
+﻿@page "/Screen"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MovieMania.Models
+@using MovieMania.Data
+@using System.Text.Json
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IDbContextFactory<MovieMania.Data.ApplicationDbContext> DbFactory
+@inject IConfiguration _configuration
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>Screen</PageTitle>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="vh-100" style="margin-top:5%;">
+    <div class="row">
+        <div class="col-2"></div>
+        <div class="col-8">
+            <div class="card shadow">
+                <div class="card-body" style="background-color: lightgray;">
+                    <div class="row text-black">
+                        <h2>Screen</h2>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"></div>                    
+                        <div class="col-4 text-end">
+                            <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
+                        </div>
+                        <p class="col-2">
+                            <a class="btn btn-primary" href="Screen/Create">Create New</a>
+                        </p>
+                    </div>
+
+                    <QuickGrid TItem="Screen" Class="table table-striped" Items="@filteredScreen.AsQueryable()" Pagination="@pageDetails">
+
+                        <TemplateColumn Context="screen" Title="Screen Name">
+                            <p>@CapitalizeFirstLetter(screen.ScreenName)</p>
+                        </TemplateColumn>
+
+                        <TemplateColumn Context="screen" Title="Cinema">
+                            <p>@CapitalizeFirstLetter(GetCinemaName(screen.CinemaId))</p>
+                        </TemplateColumn>
+                        <TemplateColumn Context="screen" Title="Total Seats">
+                            <p>@screen.TotalSeats</p>
+                        </TemplateColumn>                       
+
+                        <TemplateColumn Context="screen" Title="Action">
+                            <a href="@($"Screen/Details?screenid={screen.ScreenId}")"><i class="bi bi-eye-fill" style="color:#29b474"></i></a> &nbsp;
+                            @if (screen.CreatedBy == LoggedInUser)
+                            {
+                                <a href="@($"Screen/Edit?screenid={screen.ScreenId}")"><i class="bi bi-pencil-fill" style="color:#2f80ed"></i></a>
+                                <span>&nbsp;</span>
+                                <a href="/Screen" @onclick="() => OpenDeleteModal(screen.ScreenId)">
+                                    <i class="bi bi-trash-fill" style="color:#eb5757"></i>
+                                </a>
+                            }
+                        </TemplateColumn>
+                    </QuickGrid>
+                    <Paginator State="@pageDetails" />
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Screen Delete</h5>
+                <br />
+                <p class="text-md-center">Are you sure you want to permanently delete this screen?</p>
+                <br />
+                <div class="row">
+                    <div class="col-4"></div>
+                    <div class="col-5">
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
+                        <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowErrorModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-error-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Error</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Screen" class="btn btn-secondary" @onclick="CloseErrorModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" tabindex="-1" aria-labelledby="modal-success-label" aria-modal="true" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color:#151f30; vertical-align: middle; margin-top: 50%; max-width: 420px;">
+                <br />
+                <h5 class="modal-title text-md-center text-white">Success</h5>
+                <br />
+                <div class="text-md-center text-white">
+                    <p>@SuccessMessage</p>
+                </div>
+                <div class="row">
+                    <div class="col-5"></div>
+                    <div class="col-5">
+                        <a href="/Screen" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>
+                    </div>
+                    <div class="col-2"></div>
+                    <br />
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    string nameFilter = "";
+    List<Screen> filteredScreen = new List<Screen>();
+    PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
+
+    private System.Timers.Timer? debounceTimer;
+
+    private bool showModal = false;
+    private int? selectedScreenId;
+
+    private string? ErrorMessage { get; set; }    
+    private string? SuccessMessage { get; set; }
+    private bool ShowErrorModal { get; set; } = false;
+    private bool ShowSuccessModal { get; set; } = false;
+    private string? SId;
+    private string? LoggedInUser;
+
+    private Dictionary<int, string> cinemaLookup = new();   
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HandleSearch();
+        await LoadLookups();
+    }
+
+    private void DebouncedHandleSearch(ChangeEventArgs e)
+    {
+        nameFilter = e.Value?.ToString();
+
+        // Reset the timer
+        debounceTimer?.Stop();
+        debounceTimer = new System.Timers.Timer(100); // 100ms debounce
+        debounceTimer.Elapsed += async (_, _) => await InvokeAsync(HandleSearch);
+        debounceTimer.Start();
+    }
+
+    private async Task HandleSearch()
+    {
+        debounceTimer?.Stop();
+        var context = DbFactory.CreateDbContext();
+        if (!string.IsNullOrWhiteSpace(nameFilter))
+        {
+            filteredScreen = await context.Screen
+                                        .Where(x => EF.Functions.Like(
+                                            EF.Functions.Collate(x.ScreenName, "SQL_Latin1_General_CP1_CI_AS"),
+                                            $"%{nameFilter}%"))
+                                        .ToListAsync();
+        }
+        else
+        {
+            SId = _configuration["SId"];
+            LoggedInUser = _configuration["LoggedInUserId"];
+            
+            if (LoggedInUser == SId)
+            {
+                filteredScreen = await context.Screen
+                                        .Where(X => X.CreatedBy == SId && X.IsActive == true)
+                                        .OrderByDescending(x => x.ScreenId)
+                                        .ToListAsync();
+            }
+            else
+            {
+                filteredScreen = await context.Screen
+                     .Where(x => (x.CreatedBy == SId || x.CreatedBy == LoggedInUser) && x.IsActive == true)
+                    .OrderByDescending(x => x.ScreenId)
+                    .ToListAsync();
+            }
+        }
+    }
+
+    private async Task LoadLookups()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var cinemas = await context.Cinema.ToListAsync(); // Fix: Use ToListAsync()
+        cinemaLookup = cinemas.ToDictionary(c => c.CinemaId, c => c.CinemaName);
+               
+    }
+
+    private string GetCinemaName(int cinemaId)
+    {
+        return cinemaLookup.TryGetValue(cinemaId, out var name) ? name : "Unknown";
+    }    
+
+    public string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+    }
+
+    private void OpenDeleteModal(int screenId)
+    {
+        selectedScreenId = screenId;
+        showModal = true;
+    }
+
+    private void ConfirmDelete()
+    {
+        if (selectedScreenId != null)
+        {
+            DeleteScreen(selectedScreenId.Value);
+            showModal = false;
+        }
+    }
+
+    private async Task DeleteScreen(int screenId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (string.IsNullOrEmpty(LoggedInUser))
+        {
+            Console.WriteLine("UserId cookie not found.");
+            return;
+        }
+
+        // Find the Screen by ID
+        var screen = await context.Screen.FirstOrDefaultAsync(screen => screen.ScreenId == screenId);
+
+        if (screen == null)
+        {
+            Console.WriteLine($"Screen with ID {screenId} not found.");
+            return;
+        }
+
+        screen.IsActive = false;
+        screen.UpdatedBy = LoggedInUser;
+        screen.UpdatedDateTime = DateTime.Now;
+
+        // Attach the entity and mark it as modified
+        context.Attach(screen).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+            showModal = false;
+            await HandleSearch();
+            StateHasChanged();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ScreenExists(screen.ScreenId))
+            {
+                // Navigate to not found page if the Screen does not exist
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/Screen");
+    }
+
+    private bool ScreenExists(int screenId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Screen.Any(e => e.ScreenId == screenId);
+    }
+
+    private void CloseErrorModal()
+    {
+        ShowErrorModal = false;
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        StateHasChanged();
+    }
+}

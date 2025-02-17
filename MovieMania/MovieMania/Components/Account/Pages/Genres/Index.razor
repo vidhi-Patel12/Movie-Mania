@@ -140,18 +140,18 @@
     string nameFilter = "";
     List<Genres> filteredGenres = new List<Genres>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
 
     private bool showModal = false;
     private int? selectedGenreId;
 
-    private string ErrorMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
-    private string SuccessMessage { get; set; }
     private bool ShowSuccessModal { get; set; } = false;
 
-    private string SId;
-    private string LoggedInUser;
+    private string? SId;
+    private string? LoggedInUser;
 
     private void DebouncedHandleSearch(ChangeEventArgs e)
     {
@@ -181,14 +181,12 @@
             SId = _configuration["SId"];
             LoggedInUser = _configuration["LoggedInUserId"];
 
-            //var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
-
             if (LoggedInUser == SId)
             {
                 filteredGenres = await context.Genres
                                         .Where(X => X.CreatedBy == SId && X.IsActive == true)
                                         .OrderByDescending(x => x.GenresId)
-                                        .ToListAsync();                
+                                        .ToListAsync();
             }
             else
             {
@@ -207,7 +205,6 @@
 
     private void OpenDeleteModal(int genreId)
     {
-        // Set the selected Genre ID and open the modal
         selectedGenreId = genreId;
         showModal = true;
     }
@@ -216,7 +213,6 @@
     {
         if (selectedGenreId != null)
         {
-            // Call your delete logic here
             DeleteGenre(selectedGenreId.Value);
             showModal = false;
         }
@@ -228,17 +224,14 @@
 
         if (string.IsNullOrEmpty(LoggedInUser))
         {
-            // Handle case where UserId cookie is not present
             Console.WriteLine("UserId cookie not found.");
             return;
         }
 
-        // Find the Genre by ID
         var genre = await context.Genres.FirstOrDefaultAsync(genre => genre.GenresId == genresId);
 
         if (genre == null)
         {
-            // Handle case where the Genre does not exist
             Console.WriteLine($"Genre with ID {genresId} not found.");
             return;
         }
@@ -247,7 +240,6 @@
         genre.UpdatedBy = LoggedInUser;
         genre.UpdatedDateTime = DateTime.Now;
 
-        // Attach the entity and mark it as modified
         context.Attach(genre).State = EntityState.Modified;
 
         try
@@ -261,7 +253,6 @@
         {
             if (!GenresExists(genre.GenresId))
             {
-                // Navigate to not found page if the Genre does not exist
                 NavigationManager.NavigateTo("notfound");
             }
             else

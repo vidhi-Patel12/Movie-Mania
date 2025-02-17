@@ -29,7 +29,6 @@
                     </div>
                     <div class="row">
                         <div class="col-6"></div>
-                        <!-- Search Bar -->
                         <div class="col-4 text-end">
                             <InputText type="search" @bind-value="nameFilter" placeholder="Search" style="height:37px;" @oninput="DebouncedHandleSearch" />
                         </div>
@@ -38,7 +37,6 @@
                         </p>
                     </div>
 
-                    <!-- Table with QuickGrid -->
                     <QuickGrid TItem="Country" Class="table table-striped" Items="@filteredCountry.AsQueryable()" Pagination="@pageDetails">
                         <PropertyColumn Property="country => country.CountryName" Title="Country Name" Sortable="true" />
                         <TemplateColumn Context="country" Title="Action">
@@ -74,7 +72,6 @@
                 <div class="row">
                     <div class="col-4"></div>
                     <div class="col-5">
-                        @*<a href="/Country" class="btn btn-secondary" @onclick="CloseSuccessModal">Ok</a>*@
                         <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>&nbsp;
                         <button type="button" class="btn btn-secondary" @onclick="() => showModal = false">Cancel</button>
                     </div>
@@ -141,18 +138,18 @@
     string nameFilter = "";
     List<Country> filteredCountry = new List<Country>();
     PaginationState pageDetails = new PaginationState { ItemsPerPage = 10 };
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
 
     private bool showModal = false;
     private int? selectedCountryId;
 
-    private string ErrorMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
-    private string SuccessMessage { get; set; }
     private bool ShowSuccessModal { get; set; } = false;
 
-    private string SId;
-    private string LoggedInUser;
+    private string? SId;
+    private string? LoggedInUser;
 
     private void DebouncedHandleSearch(ChangeEventArgs e)
     {
@@ -181,8 +178,6 @@
         {
             SId = _configuration["SId"];
             LoggedInUser = _configuration["LoggedInUserId"];
-
-            //var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
 
             if (LoggedInUser == SId)
             {
@@ -317,7 +312,6 @@
         country.UpdatedBy = LoggedInUser;
         country.UpdatedDateTime = DateTime.Now;
 
-        // Attach the entity and mark it as modified
         context.Attach(country).State = EntityState.Modified;
 
         try
@@ -331,7 +325,6 @@
         {
             if (!CountryExists(country.CountryId))
             {
-                // Navigate to not found page if the country does not exist
                 NavigationManager.NavigateTo("notfound");
             }
             else

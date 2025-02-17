@@ -105,17 +105,18 @@
     [SupplyParameterFromForm]
     private Formats Formats { get; set; } = new();
 
-    private string ErrorMessage { get; set; }
-    private string SuccessMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
     private bool ShowErrorModal { get; set; } = false;
     private bool ShowSuccessModal { get; set; } = false;
-    private string SId;
+    private string? SId;
+    private string? LoggedInUser;
 
     private async Task FetchAndSaveFormats()
     {
         ErrorMessage = "";
         SuccessMessage = "";
-        var LoggedInUser = HttpContextAccessor.HttpContext.Request.Cookies["UserId"];
+        LoggedInUser = _configuration["LoggedInUserId"];
 
         try
         {
@@ -148,7 +149,6 @@
             context.Formats.Add(newFormat);
             await context.SaveChangesAsync();
 
-            // Success message
             SuccessMessage = $"The format '{Formats.FormatName}' has been added successfully.";
             ShowSuccessModal = true;
         }
